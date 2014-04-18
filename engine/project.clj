@@ -9,4 +9,6 @@
                  [twitter-api "0.7.5"]]
   :main ^:skip-aot magepunch.engine
   :target-path "target/%s"
-  :profiles {:uberjar {:aot :all}})
+  :profiles {:uberjar {:aot :all}
+             :dev {:source-paths ["dev"]
+                   :dependencies [[midje "1.5.0"]]}})
