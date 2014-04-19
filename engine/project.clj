@@ -6,7 +6,8 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [com.datomic/datomic-free "0.9.4497"]
                  [com.flyingmachine/datomic-junk "0.1.3"]
-                 [twitter-api "0.7.5"]]
+                 [twitter-api "0.7.5"]
+                 [com.flyingmachine/webutils "0.1.6"]]
   :main ^:skip-aot magepunch.engine
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}
