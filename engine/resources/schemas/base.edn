@@ -9,7 +9,7 @@
   :db.install/_attribute :db.part/db}
 
  ;; matches
- {:db/ident :match/id
+ {:db/ident :match/num
   :db/id #db/id[:db.part/db]
   :db/valueType :db.type/long
   :db/cardinality :db.cardinality/one
@@ -23,11 +23,11 @@
   :db/doc "Users in the match"
   :db.install/_attribute :db.part/db}
 
- {:db/ident :match/status
+ {:db/ident :match/winner
   :db/id #db/id[:db.part/db]
   :db/valueType :db.type/ref
-  :db/cardinality :db.cardinality/many
-  :db/doc "Users in the match"
+  :db/cardinality :db.cardinality/one
+  :db/doc "Magepuncher who won"
   :db.install/_attribute :db.part/db}
 
  ;; rounds
@@ -35,7 +35,7 @@
   :db/id #db/id[:db.part/db]
   :db/valueType :db.type/long
   :db/cardinality :db.cardinality/one
-  :db/doc "Users in the match"
+  :db/doc "Which round in the match"
   :db.install/_attribute :db.part/db}
 
  {:db/ident :round/match
@@ -43,7 +43,7 @@
   :db/valueType :db.type/ref
   :db/cardinality :db.cardinality/one
   :db.install/_attribute :db.part/db}
-
+ 
  ;; moves
  {:db/ident :move/sequence
   :db/id #db/id[:db.part/db]
