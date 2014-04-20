@@ -1,6 +1,7 @@
 (ns magepunch.engine.move
   (:require [clojure.string :as s]
-            [flyingmachine.webutils.validation :as v]))
+            [flyingmachine.webutils.validation :as v]
+            [com.flyingmachine.datomic-junk :as dj]))
 
 (defn symmetrize
   "Used to avoid repeating the symmetrical value of pair-damages"
@@ -76,7 +77,8 @@
    errors))
 
 (defn process-valid-submission!
-  [submission])
+  [submission]
+  ())
 
 (defn process-invalid-submission!
   [submission])
