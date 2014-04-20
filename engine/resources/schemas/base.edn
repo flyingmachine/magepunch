@@ -1,0 +1,66 @@
+;; questions: store round and match results, or derive those every time?
+
+[ ;; users
+ {:db/ident :user/screenname
+  :db/id #db/id [:db.part/db]
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one
+  :db/fulltext true
+  :db.install/_attribute :db.part/db}
+
+ ;; matches
+ {:db/ident :match/id
+  :db/id #db/id[:db.part/db]
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/doc "Match # among all matches"
+  :db.install/_attribute :db.part/db}
+
+ {:db/ident :match/magepunchers
+  :db/id #db/id[:db.part/db]
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/many
+  :db/doc "Users in the match"
+  :db.install/_attribute :db.part/db}
+
+ {:db/ident :match/status
+  :db/id #db/id[:db.part/db]
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/many
+  :db/doc "Users in the match"
+  :db.install/_attribute :db.part/db}
+
+ ;; rounds
+ {:db/ident :round/num
+  :db/id #db/id[:db.part/db]
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/doc "Users in the match"
+  :db.install/_attribute :db.part/db}
+
+ {:db/ident :round/match
+  :db/id #db/id[:db.part/db]
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/one
+  :db.install/_attribute :db.part/db}
+
+ ;; moves
+ {:db/ident :move/sequence
+  :db/id #db/id[:db.part/db]
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one
+  :db/doc "The sequence of attacks for a move, like 'z c h'"
+  :db.install/_attribute :db.part/db}
+
+ {:db/ident :move/round
+  :db/id #db/id[:db.part/db]
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/one
+  :db.install/_attribute :db.part/db}
+
+ {:db/ident :move/magepuncher
+  :db/id #db/id[:db.part/db]
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/one
+  :db/doc "User who is doing the move"
+  :db.install/_attribute :db.part/db}]
