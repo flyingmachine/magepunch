@@ -78,6 +78,9 @@
 
 (defn process-valid-submission!
   [submission]
+  ;; look up users
+  ;; create user if nonexistent
+  
   ;; look up match
   ;; if not active match, create new match
   
@@ -87,7 +90,7 @@
   ;; add move
   ;; if first move of round, notify opponent
   ;; otherwise complete round
-  ())
+  )
 
 (defn process-invalid-submission!
   [submission])
