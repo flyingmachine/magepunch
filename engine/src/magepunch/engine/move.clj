@@ -77,14 +77,15 @@
    errors))
 
 (defn users
-  [submission]
-  {:refs {}
-   :transactions []}
+  [state submission]
   (reduce (fn [screenname]
-            (let [user (dj/one [:user/screenname screenname])]))))
+            (if-let [user (dj/one [:user/screenname screenname])]
+              (assoc-in submission [:users])))))
 
-(defn process-valid-submission!
+(defn process-valid-submission
   [submission]
+  (let [state {:refs {} :transactions []}]
+    (-> (users state submission)))
   
   ;; look up users
   ;; create user if nonexistent
