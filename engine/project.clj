@@ -15,4 +15,5 @@
              :dev {:source-paths ["dev"]
                    :dependencies [[midje "1.5.0"]]
                    :env {:datomic {:db-uri "datomic:free://localhost:4334/magepunch"
-                                   :test-uri "datomic:mem://magepunch"}}}})
+                                   :test-uri "datomic:mem://magepunch"
+                                   :schema-attr :magepunch/schema}}}})
