@@ -76,8 +76,16 @@
    false
    errors))
 
+(defn users
+  [submission]
+  {:refs {}
+   :transactions []}
+  (reduce (fn [screenname]
+            (let [user (dj/one [:user/screenname screenname])]))))
+
 (defn process-valid-submission!
   [submission]
+  
   ;; look up users
   ;; create user if nonexistent
   
