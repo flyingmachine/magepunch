@@ -1,5 +1,6 @@
 [;; questions: store round and match results, or derive those every time?
  ;; users
+ ;; TODO timestamps
  {:db/ident :user/screenname
   :db/id #db/id [:db.part/db]
   :db/valueType :db.type/string

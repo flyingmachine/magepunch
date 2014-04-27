@@ -1,0 +1,6 @@
+[{:user/screenname "fishtacos"
+  :db/id #db/id [:db.part/user -10]}
+ {:user/screenname "ultraman"
+  :db/id #db/id [:db.part/user -20]}
+ {:match/magepunchers #{#db/id[:db.part/user -10] #db/id[:db.part/user -20]}
+  :db/id #db/id [:db.part/user -100]}]

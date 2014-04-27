@@ -1,7 +1,8 @@
 (ns magepunch.engine.move
   (:require [clojure.string :as s]
             [flyingmachine.webutils.validation :as v]
-            [com.flyingmachine.datomic-junk :as dj]))
+            [com.flyingmachine.datomic-junk :as dj]
+            [magepunch.engine.transactions :as t]))
 
 (defn symmetrize
   "Used to avoid repeating the symmetrical value of pair-damages"
@@ -76,16 +77,70 @@
    false
    errors))
 
-(defn users
-  [state submission]
-  (reduce (fn [screenname]
-            (if-let [user (dj/one [:user/screenname screenname])]
-              (assoc-in submission [:users])))))
+(def submission-process-tracking
+  {:flags {}
+   :refs {:users #{}}
+   :transactions []})
 
-(defn process-valid-submission
+(defn add-transaction
+  [tracking transaction]
+  (update-in tracking [:transactions] #(conj % transaction)))
+
+(defn add-flag
+  [tracking key]
+  (assoc-in tracking [:flags key] true))
+
+(defn track-user-id
+  [tracking user]
+  (update-in tracking [:refs :users] #(conj % (:db/id user))))
+
+(defn users
+  "look up users, create if nonexistent, and add to tracking"
+  [_tracking submission]
+  (reduce (fn [tracking screenname]
+            (if-let [user (dj/one [:user/screenname screenname])]
+              (track-user-id tracking user)
+              (let [user (t/new-user screenname)]
+                (-> tracking
+                    (add-transaction user)
+                    (track-user-id user)
+                    (add-flag :new-user)))))
+          _tracking
+          [(:from submission) (:target submission)]))
+
+(defn find-matches
+  [users]
+  (apply dj/all (map #(vector :match/magepunchers %) users)))
+
+(defn current-match
+  [matches]
+  (first (find #(nil? (:match/winner %)) matches)))
+
+(defn match-num
+  [matches]
+  (if (empty? matches)
+    1
+    (inc (apply max (map :match/num matches)))))
+
+(defn match
+  "find current match, create if nonexistent, add to tracking"
+  [tracking]
+  (let [users (-> tracking :refs :users)
+        new-users (-> tracking :flags :new-user)
+        matches (if new-users [] (find-matches users))]
+    (if-let [match (and (not new-users)
+                        (current-match matches))]
+      (assoc-in [:refs :match] match)
+      (let [match (t/new-match users (match-num matches))]
+        (-> tracking
+            (assoc-in [:refs :match] match)
+            (add-transaction match)
+            (add-flag :new-match))))))
+
+(defn process-valid-submission!
   [submission]
-  (let [state {:refs {} :transactions []}]
-    (-> (users state submission)))
+  (-> (users submission-process-tracking submission)
+      match)
   
   ;; look up users
   ;; create user if nonexistent
