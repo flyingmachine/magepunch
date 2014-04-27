@@ -130,7 +130,7 @@
         matches (if new-users [] (find-matches users))]
     (if-let [match (and (not new-users)
                         (current-match matches))]
-      (assoc-in [:refs :match] match)
+      (assoc-in tracking [:refs :match] match)
       (let [match (t/new-match users (match-num matches))]
         (-> tracking
             (assoc-in [:refs :match] match)

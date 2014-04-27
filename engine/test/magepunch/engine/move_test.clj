@@ -36,6 +36,11 @@
     => 2
 
     (fact "passing to match produceses match stuff"
-      (let [match (m/match tracking)]
-        match
-        => {}))))
+      (let [tracking (m/match tracking)]
+        (get-in tracking [:flags :new-match])
+        => true
+        (count (:transactions tracking))
+        => 3
+        (let [match (get-in tracking [:refs :match])]
+          (:match/num match)
+          => 1)))))
