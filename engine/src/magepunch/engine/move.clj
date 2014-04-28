@@ -90,57 +90,86 @@
   [tracking key]
   (assoc-in tracking [:flags key] true))
 
-(defn track-user-id
-  [tracking user]
-  (update-in tracking [:refs :users] #(conj % (:db/id user))))
+(defn track-id
+  [tracking type ent]
+  (let [id (:db/id ent)]
+    (if (coll? (get-in tracking [:refs type]))
+      (update-in tracking [:refs type] #(conj % id))
+      (assoc-in tracking [:refs type] id))))
 
 (defn users
   "look up users, create if nonexistent, and add to tracking"
   [_tracking submission]
   (reduce (fn [tracking screenname]
             (if-let [user (dj/one [:user/screenname screenname])]
-              (track-user-id tracking user)
+              (track-id tracking :users user)
               (let [user (t/new-user screenname)]
                 (-> tracking
                     (add-transaction user)
-                    (track-user-id user)
+                    (track-id :users user)
                     (add-flag :new-user)))))
           _tracking
           [(:from submission) (:target submission)]))
 
 (defn find-matches
-  [users]
-  (apply dj/all (map #(vector :match/magepunchers %) users)))
+  [tracking]
+  (if (get-in tracking [:flags :new-user])
+    []
+    (apply dj/all (map #(vector :match/magepunchers %) users))))
 
 (defn current-match
   [matches]
-  (first (find #(nil? (:match/winner %)) matches)))
-
-(defn match-num
-  [matches]
   (if (empty? matches)
+    nil
+    (first (find #(nil? (:match/winner %)) matches))))
+
+(defn series-num
+  [num-field series]
+  (if (empty? series)
     1
-    (inc (apply max (map :match/num matches)))))
+    (inc (apply max (map num-field series)))))
 
 (defn match
   "find current match, create if nonexistent, add to tracking"
   [tracking]
-  (let [users (-> tracking :refs :users)
-        new-users (-> tracking :flags :new-user)
-        matches (if new-users [] (find-matches users))]
-    (if-let [match (and (not new-users)
-                        (current-match matches))]
-      (assoc-in tracking [:refs :match] match)
-      (let [match (t/new-match users (match-num matches))]
+  (let [matches (find-matches tracking)]
+    (if-let [match (current-match matches)]
+      (track-id tracking :match match)
+      (let [users (-> tracking :refs :users)
+            match (t/new-match users (series-num matches :match/num))]
         (-> tracking
-            (assoc-in [:refs :match] match)
+            (track-id :match match)
             (add-transaction match)
             (add-flag :new-match))))))
+
+(defn find-rounds
+  [tracking]
+  (if (get-in tracking [:flags :new-match])
+    []
+    (dj/all [:round/match (get-in tracking [:refs :match])])))
+
+(defn current-round
+  [rounds]
+  (if (empty? rounds)
+    nil
+    (first (find #(< (count (:move/_round %)) 2) rounds))))
+
+(defn round
+  [tracking]
+  (let [rounds (find-rounds tracking)]
+    (if-let [round (current-round rounds)]
+      (track-id tracking :round round)
+      (let [round (t/new-round match (series-num round :round/num))]
+        (-> tracking
+            (track-id :round round)
+            (add-transaction round)
+            (add-flag :new-round))))))
 
 (defn process-valid-submission!
   [submission]
   (-> (users submission-process-tracking submission)
-      match)
+      match
+      round)
   
   ;; look up users
   ;; create user if nonexistent

@@ -26,21 +26,27 @@
       :target ["please specify a target, like @opponent"]})
 
 (facts "about processing users"
-  (fact "processing two new users results in two transactions, 2 refs, new user flag")
+  (fact "processing two new users")
   (let [tracking (m/users m/submission-process-tracking (m/dm->submission test-dm))]
-    (:flags tracking)
-    => {:new-user true}
-    (count (get-in tracking [:refs :users]))
-    => 2
-    (count (:transactions tracking))
-    => 2
+    (fact "the new user flag is set"
+      (:flags tracking)
+      => {:new-user true})
+    (fact "there are two users in the refs"
+      (count (get-in tracking [:refs :users]))
+      => 2)
+    (fact "there are two transactions"
+      (count (:transactions tracking))
+      => 2)
 
-    (fact "passing to match produceses match stuff"
+    (fact "when passing to match"
       (let [tracking (m/match tracking)]
-        (get-in tracking [:flags :new-match])
-        => true
-        (count (:transactions tracking))
-        => 3
-        (let [match (get-in tracking [:refs :match])]
-          (:match/num match)
-          => 1)))))
+        (fact "the new match flag is set"
+          (get-in tracking [:flags :new-match])
+          => true)
+        (fact "a transaction was added"
+          (count (:transactions tracking))
+          => 3)
+        (let [match (last (:transactions tracking))]
+          (fact "the match num is 1"
+            (:match/num match)
+            => 1))))))
