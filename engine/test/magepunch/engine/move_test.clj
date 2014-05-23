@@ -32,7 +32,7 @@
       (:flags tracking)
       => {:new-user true})
     (fact "there are two users in the refs"
-      (count (get-in tracking [:refs :users]))
+      (count (get-in tracking [:refs :user]))
       => 2)
     (fact "there are two transactions"
       (count (:transactions tracking))

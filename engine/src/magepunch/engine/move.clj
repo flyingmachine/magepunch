@@ -31,18 +31,26 @@
   [p1 p2]
   (apply map + (map #(get pair-damages [%1 %2]) p1 p2)))
 
-(defn tweet-move-result
+(defn tweet-move-result!
+  "send a tweek to the two players announcing move result"
   [move-result])
 
+;;;;;;
+;; Submission parsing
+;;;;;;
+
 (defn dm-from
+  "who sent the dm"
   [dm]
   (get-in dm [:sender :screen_name]))
 
 (defn dm-target
+  "the other player"
   [dm]
   (second (re-find #"@([^ ]+)" (:text dm))))
 
 (defn dm-moves
+  "the three moves in the DM, e.g. p c h"
   [dm]
   (map str
        (-> (re-find #"@[^\s]+(.*$)" (:text dm))
@@ -77,37 +85,60 @@
    false
    errors))
 
+;;;;;;
+;; Submission processing
+;;;;;;
+
+;; Pipe submission through a series of processors, building up a final
+;; submission map which contains datomic transactions
+
+;; Initial tracking map which grows as submission is processed
 (def submission-process-tracking
   {:flags {}
-   :refs {:users #{}}
+   :refs {:user #{}}
    :transactions []})
 
 (defn add-transaction
+  "A submission can include an indeterminate number of transaction"
   [tracking transaction]
   (update-in tracking [:transactions] #(conj % transaction)))
 
 (defn add-flag
+  "flags help keep track of what entities don't exist yet"
   [tracking key]
   (assoc-in tracking [:flags key] true))
 
 (defn track-id
+  "track refs, whether for entities-to-be or existing ones"
   [tracking type ent]
   (let [id (:db/id ent)]
     (if (coll? (get-in tracking [:refs type]))
       (update-in tracking [:refs type] #(conj % id))
       (assoc-in tracking [:refs type] id))))
 
+(defn series-num
+  "keep track of which x this is, e.g. match 1, match 2, match 3, or
+  round 1, round 2, etc"
+  [series num-field]
+  (if (empty? series)
+    1
+    (inc (apply max (map num-field series)))))
+
+(defmacro track-new
+  [tracking-name type]
+  `(-> ~tracking-name
+       (track-id ~(keyword type) ~type)
+       (add-transaction ~type)
+       (add-flag ~(keyword (str "new-" type)))))
+
 (defn users
   "look up users, create if nonexistent, and add to tracking"
   [_tracking submission]
   (reduce (fn [tracking screenname]
             (if-let [user (dj/one [:user/screenname screenname])]
-              (track-id tracking :users user)
+              (track-id tracking :user user)
               (let [user (t/new-user screenname)]
-                (-> tracking
-                    (add-transaction user)
-                    (track-id :users user)
-                    (add-flag :new-user)))))
+                (track-new tracking user))))
           _tracking
           [(:from submission) (:target submission)]))
 
@@ -123,19 +154,13 @@
     nil
     (first (find #(nil? (:match/winner %)) matches))))
 
-(defn series-num
-  [num-field series]
-  (if (empty? series)
-    1
-    (inc (apply max (map num-field series)))))
-
 (defn match
   "find current match, create if nonexistent, add to tracking"
   [tracking]
   (let [matches (find-matches tracking)]
     (if-let [match (current-match matches)]
       (track-id tracking :match match)
-      (let [users (-> tracking :refs :users)
+      (let [users (get-in tracking [:refs :user])
             match (t/new-match users (series-num matches :match/num))]
         (-> tracking
             (track-id :match match)
