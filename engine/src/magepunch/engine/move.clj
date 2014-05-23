@@ -162,10 +162,7 @@
       (track-id tracking :match match)
       (let [users (get-in tracking [:refs :user])
             match (t/new-match users (series-num matches :match/num))]
-        (-> tracking
-            (track-id :match match)
-            (add-transaction match)
-            (add-flag :new-match))))))
+        (track-new tracking match)))))
 
 (defn find-rounds
   [tracking]
