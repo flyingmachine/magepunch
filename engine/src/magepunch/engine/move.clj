@@ -124,21 +124,27 @@
     1
     (inc (apply max (map num-field series)))))
 
-(defmacro track-new
-  [tracking-name type]
-  `(-> ~tracking-name
-       (track-id ~(keyword type) ~type)
-       (add-transaction ~type)
-       (add-flag ~(keyword (str "new-" type)))))
+;; TODO consider making this a function
+;; only downside is unnecessarily calling new-ent fns, but those are
+;; cheap anywawy
+(defmacro track-ent
+  [tracking-name ent-kw existing-ent new-ent]
+  `(if-let [ent# ~existing-ent]
+     (track-id ~tracking-name ~ent-kw ent#)
+     (let [ent# ~new-ent]
+       (-> ~tracking-name
+           (track-id ~ent-kw ent#)
+           (add-transaction ent#)
+           (add-flag ~(keyword (str "new-" (name ent-kw))))))))
 
 (defn users
   "look up users, create if nonexistent, and add to tracking"
   [_tracking submission]
   (reduce (fn [tracking screenname]
-            (if-let [user (dj/one [:user/screenname screenname])]
-              (track-id tracking :user user)
-              (let [user (t/new-user screenname)]
-                (track-new tracking user))))
+            (track-ent tracking
+                       :user
+                       (dj/one [:user/screenname screenname])
+                       (t/new-user screenname)))
           _tracking
           [(:from submission) (:target submission)]))
 
@@ -158,11 +164,11 @@
   "find current match, create if nonexistent, add to tracking"
   [tracking]
   (let [matches (find-matches tracking)]
-    (if-let [match (current-match matches)]
-      (track-id tracking :match match)
-      (let [users (get-in tracking [:refs :user])
-            match (t/new-match users (series-num matches :match/num))]
-        (track-new tracking match)))))
+    (track-ent tracking
+               :match
+               (current-match matches)
+               (let [users (get-in tracking [:refs :user])]
+                 (t/new-match users (series-num matches :match/num))))))
 
 (defn find-rounds
   [tracking]
@@ -178,14 +184,12 @@
 
 (defn round
   [tracking]
-  (let [rounds (find-rounds tracking)]
-    (if-let [round (current-round rounds)]
-      (track-id tracking :round round)
-      (let [round (t/new-round match (series-num round :round/num))]
-        (-> tracking
-            (track-id :round round)
-            (add-transaction round)
-            (add-flag :new-round))))))
+  (let [rounds (find-rounds tracking)
+        match (get-in tracking [:refs :match])]
+    (track-ent tracking
+               :round
+               (current-round rounds)
+               (t/new-round match (series-num rounds :round/num)))))
 
 (defn process-valid-submission!
   [submission]

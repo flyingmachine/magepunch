@@ -6,6 +6,10 @@
   {:sender {:screen_name "bigpunch"}
    :text "@tinyknuckles p p c"})
 
+(defn users
+  []
+  (m/users m/submission-process-tracking (m/dm->submission test-dm)))
+
 (fact "DMs are parsed nicely"
   (m/dm->submission test-dm)
   => {:from "bigpunch"
@@ -27,7 +31,7 @@
 
 (facts "about processing users"
   (fact "processing two new users")
-  (let [tracking (m/users m/submission-process-tracking (m/dm->submission test-dm))]
+  (let [tracking (users)]
     (fact "the new user flag is set"
       (:flags tracking)
       => {:new-user true})
@@ -36,17 +40,30 @@
       => 2)
     (fact "there are two transactions"
       (count (:transactions tracking))
-      => 2)
+      => 2)))
 
-    (fact "when passing to match"
-      (let [tracking (m/match tracking)]
-        (fact "the new match flag is set"
-          (get-in tracking [:flags :new-match])
-          => true)
-        (fact "a transaction was added"
-          (count (:transactions tracking))
-          => 3)
-        (let [match (last (:transactions tracking))]
-          (fact "the match num is 1"
-            (:match/num match)
-            => 1))))))
+(fact "when processing match"
+  (let [tracking (m/match (users))]
+    (fact "the new match flag is set"
+      (get-in tracking [:flags :new-match])
+      => true)
+    (fact "a transaction was added"
+      (count (:transactions tracking))
+      => 3)
+    (let [match (last (:transactions tracking))]
+      (fact "the match num is 1"
+        (:match/num match)
+        => 1))))
+
+(fact "when processing round"
+  (let [tracking (m/round (m/match (users)))]
+    (fact "the new round flag is set"
+      (get-in tracking [:flags :new-round])
+      => true)
+    (fact "a transaction was added"
+      (count (:transactions tracking))
+      => 4)
+    (let [round (last (:transactions tracking))]
+      (fact "the round num is 1"
+        (:round/num round)
+        => 1))))

@@ -19,4 +19,4 @@
 
 (defn new-round
   [match num]
-  (dbid {:round/match match :match/num num}))
+  (dbid {:round/match match :round/num num}))
