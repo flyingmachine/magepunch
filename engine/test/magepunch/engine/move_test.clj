@@ -1,6 +1,9 @@
 (ns magepunch.engine.move-test
   (:require [magepunch.engine.move :as m])
-  (:use midje.sweet))
+  (:use midje.sweet
+        magepunch.test.db-helpers))
+
+(setup-db-background)
 
 (def test-dm
   {:sender {:screen_name "bigpunch"}

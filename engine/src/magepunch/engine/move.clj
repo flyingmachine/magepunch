@@ -112,9 +112,9 @@
   [tracking key]
   (get-in tracking [:flags key]))
 
-(defn ffind
+(defn ffilter
   [pred col]
-  (first (find pred col)))
+  (first (filter pred col)))
 
 (defn track-id
   "track refs, whether for entities-to-be or existing ones"
@@ -145,13 +145,6 @@
            (add-transaction ent#)
            (add-flag ~(keyword (str "new-" (name ent-kw))))))))
 
-(defmacro current-fn
-  [pred]
-  `(fn [col#]
-     (if (empty? col#)
-       nil
-       (ffind ~pred col#))))
-
 (defn users
   "look up users, create if nonexistent, and add to tracking"
   [_tracking submission]
@@ -169,7 +162,7 @@
     []
     (apply dj/all (map #(vector :match/magepunchers %) users))))
 
-(def current-match (current-fn #(nil? (:match/winner %))))
+(def current-match (partial ffilter #(nil? (:match/winner %))))
 
 (defn match
   "find current match, create if nonexistent, add to tracking"
@@ -187,7 +180,7 @@
     []
     (dj/all [:round/match (get-in tracking [:refs :match])])))
 
-(def current-round (current-fn #(< (count (:move/_round %)) 2)))
+(def current-round (partial ffilter #(< (count (:move/_round %)) 2)))
 
 (defn round
   [tracking]
