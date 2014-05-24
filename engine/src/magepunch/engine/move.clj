@@ -145,11 +145,12 @@
            (add-transaction ent#)
            (add-flag ~(keyword (str "new-" (name ent-kw))))))))
 
-(defmacro current
-  [col pred]
-  `(if (empty? ~col)
-     nil
-     (ffind ~pred ~col)))
+(defmacro current-fn
+  [pred]
+  `(fn [col#]
+     (if (empty? col#)
+       nil
+       (ffind ~pred col#))))
 
 (defn users
   "look up users, create if nonexistent, and add to tracking"
@@ -168,9 +169,7 @@
     []
     (apply dj/all (map #(vector :match/magepunchers %) users))))
 
-(defn current-match
-  [matches]
-  (current matches #(nil? (:match/winner %))))
+(def current-match (current-fn #(nil? (:match/winner %))))
 
 (defn match
   "find current match, create if nonexistent, add to tracking"
@@ -188,9 +187,7 @@
     []
     (dj/all [:round/match (get-in tracking [:refs :match])])))
 
-(defn current-round
-  [rounds]
-  (current rounds #(< (count (:move/_round %)) 2)))
+(def current-round (current-fn #(< (count (:move/_round %)) 2)))
 
 (defn round
   [tracking]
