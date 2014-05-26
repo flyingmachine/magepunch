@@ -70,3 +70,5 @@
       (fact "the round num is 1"
         (:round/num round)
         => 1))))
+
+;; TODO ensure that find-matches finds an existing match

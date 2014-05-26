@@ -93,10 +93,13 @@
 ;; submission map which contains datomic transactions
 
 ;; Initial tracking map which grows as submission is processed
-(def submission-process-tracking
+(defn submision-process-tracking
+  [submission]
   {:flags {}
    :refs {:user #{}}
-   :transactions []})
+   :transactions []
+   :errors #{}
+   :submission submission})
 
 (defn add-transaction
   "A submission can include an indeterminate number of transaction"
@@ -112,6 +115,10 @@
   [tracking key]
   (get-in tracking [:flags key]))
 
+(defn tref
+  [tracking key]
+  (get-in tracking [:refs key]))
+
 (defn ffilter
   [pred col]
   (first (filter pred col)))
@@ -120,7 +127,7 @@
   "track refs, whether for entities-to-be or existing ones"
   [tracking type ent]
   (let [id (:db/id ent)]
-    (if (coll? (get-in tracking [:refs type]))
+    (if (coll? (tref tracking type))
       (update-in tracking [:refs type] #(conj % id))
       (assoc-in tracking [:refs type] id))))
 
@@ -145,6 +152,14 @@
            (add-transaction ent#)
            (add-flag ~(keyword (str "new-" (name ent-kw))))))))
 
+(defn find-ents
+  [tracking new-precluder parent-key parent-ref-key]
+  (if (flag tracking new-precluder)
+    []
+    (let [refs (tref tracking parent-ref-key)
+          refs (if (coll? refs) refs (vector refs))]
+      (apply dj/all (map #(vector parent-key %) refs)))))
+
 (defn users
   "look up users, create if nonexistent, and add to tracking"
   [_tracking submission]
@@ -156,12 +171,11 @@
           _tracking
           [(:from submission) (:target submission)]))
 
+;; TODO possibly refactor to create maps describing matches and
+;; rounds, and operate on those descriptions?
 (defn find-matches
   [tracking]
-  (if (flag tracking :new-user)
-    []
-    (apply dj/all (map #(vector :match/magepunchers %) users))))
-
+  (find-ents tracking :new-user :match/magepunchers :user))
 (def current-match (partial ffilter #(nil? (:match/winner %))))
 
 (defn match
@@ -171,15 +185,12 @@
     (track-ent tracking
                :match
                (current-match matches)
-               (let [users (get-in tracking [:refs :user])]
+               (let [users (tref tracking :user)]
                  (t/new-match users (series-num matches :match/num))))))
 
 (defn find-rounds
   [tracking]
-  (if (flag tracking :new-match)
-    []
-    (dj/all [:round/match (get-in tracking [:refs :match])])))
-
+  (find-ents tracking :new-match :round/match :match))
 (def current-round (partial ffilter #(< (count (:move/_round %)) 2)))
 
 (defn round
@@ -191,9 +202,18 @@
                (current-round rounds)
                (t/new-round match (series-num rounds :round/num)))))
 
+
+
+(defn move
+  [tracking]
+  (if (and (empty? (:flags tracking)))
+    nil
+    nil))
+
 (defn process-valid-submission!
   [submission]
-  (-> (users submission-process-tracking submission)
+  (-> (submission-process-tracking submission)
+      users
       match
       round)
   
