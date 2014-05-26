@@ -131,10 +131,7 @@
 (defn track-ref
   "track refs, whether for entities-to-be or existing ones"
   [tracking type ent]
-  (let [id (:db/id ent)]
-    (if (coll? (tref tracking type))
-      (update-in tracking [:refs type] #(conj % id))
-      (assoc-in tracking [:refs type] id))))
+  (assoc-in tracking [:refs type] (:db/id ent)))
 
 (defn series-num
   "keep track of which x this is, e.g. match 1, match 2, match 3, or
@@ -260,7 +257,6 @@
 
 (defn commit!
   [tracking]
-  (println tracking)
   @(dj/t (:transactions tracking)))
 
 (defn process-valid-submission!

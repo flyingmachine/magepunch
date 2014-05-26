@@ -147,7 +147,3 @@
       (:move/magepuncher move)
       => from)))
 
-(fact "processing two moves"
-  (t/reload!)
-  (m/process-valid-submission! (m/dm->submission test-dm))
-  (m/process-valid-submission! (m/dm->submission test-dm2)))
