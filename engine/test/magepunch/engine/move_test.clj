@@ -1,7 +1,7 @@
 (ns magepunch.engine.move-test
   (:require [magepunch.engine.move :as m])
   (:use midje.sweet
-        magepunch.test.db-helpers))
+        magepunch.engine.test.db-helpers))
 
 (setup-db-background)
 
@@ -11,7 +11,7 @@
 
 (defn users
   []
-  (m/users m/submission-process-tracking (m/dm->submission test-dm)))
+  (m/users (m/submission-process-tracking (m/dm->submission test-dm))))
 
 (fact "DMs are parsed nicely"
   (m/dm->submission test-dm)

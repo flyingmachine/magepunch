@@ -1,4 +1,4 @@
-(ns magepunch.test.db-helpers
+(ns magepunch.engine.test.db-helpers
   (:require [datomic.api :as d]
             [com.flyingmachine.datomic-junk :as dj]
             [magepunch.engine.tasks :as t])

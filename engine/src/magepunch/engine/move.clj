@@ -93,7 +93,7 @@
 ;; submission map which contains datomic transactions
 
 ;; Initial tracking map which grows as submission is processed
-(defn submision-process-tracking
+(defn submission-process-tracking
   [submission]
   {:flags {}
    :refs {:user #{}}
@@ -162,7 +162,7 @@
 
 (defn users
   "look up users, create if nonexistent, and add to tracking"
-  [_tracking submission]
+  [{:keys [submission] :as _tracking}]
   (reduce (fn [tracking screenname]
             (track-ent tracking
                        :user
