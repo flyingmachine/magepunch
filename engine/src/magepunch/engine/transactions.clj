@@ -14,5 +14,11 @@
 (def new-ent
   {:from   new-user
    :target new-user
-   :match (fn [users num] (dbid {:match/magepunchers users :match/num num}))
-   :round (fn [match num] (dbid {:round/match match :round/num num}))})
+   :match (fn [users num]
+            (dbid {:match/magepunchers users :match/num num}))
+   :round (fn [match num]
+            (dbid {:round/match match :round/num num}))
+   :move  (fn [round user sequence]
+            (dbid {:move/round round
+                   :move/sequence sequence
+                   :move/magepuncher user}))})

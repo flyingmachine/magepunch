@@ -213,7 +213,12 @@
 
 (defn move
   [tracking]
-  (let [from (tref tracking :from)]))
+  (track-ent tracking
+             :move
+             nil
+             (tref tracking :round)
+             (tref tracking :from)
+             (get-in tracking [:submission :moves])))
 
 (defn process-valid-submission!
   [submission]
@@ -222,7 +227,8 @@
       target
       users
       match
-      round)
+      round
+      move)
   
   ;; look up users
   ;; create user if nonexistent

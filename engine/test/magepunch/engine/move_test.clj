@@ -43,12 +43,13 @@
       (:flags tracking)
       => {:from true :target true :user true})
     (fact "there are two users in the refs"
-      (count (get-in tracking [:refs :user]))
+      (count (m/tref tracking :user))
       => 2)
     (fact "there are two transactions"
       (count (:transactions tracking))
       => 2)))
 
+;; TODO ensure that find-matches finds an existing match
 (fact "when processing match"
   (let [tracking (m/match (users))]
     (fact "the new match flag is set"
@@ -62,6 +63,7 @@
         (:match/num match)
         => 1))))
 
+;; TODO test finding an existing round
 (fact "when processing round"
   (let [tracking (m/round (m/match (users)))]
     (fact "the new round flag is set"
@@ -75,4 +77,20 @@
         (:round/num round)
         => 1))))
 
-;; TODO ensure that find-matches finds an existing match
+(fact "when processing move"
+  (let [tracking (m/move (m/round (m/match (users))))]
+    (fact "a transaction was added"
+      (count (:transactions tracking))
+      => 5)
+    (let [move (last (:transactions tracking))]
+      (fact "the user is the same as from"
+        (:move/magepuncher move)
+        => (m/tref tracking :from)
+        => true)
+      (fact "move round refers to round"
+        (:move/round move)
+        => (m/tref tracking :round)
+        => true)
+      (fact "sequence is correct"
+        (:move/sequence move)
+        "p p c"))))
