@@ -142,15 +142,15 @@
 ;; TODO consider making this a function
 ;; only downside is unnecessarily calling new-ent fns, but those are
 ;; cheap anywawy
-(defmacro track-ent
+(defn track-ent
   [tracking-name ent-kw existing-ent new-ent]
-  `(if-let [ent# ~existing-ent]
-     (track-ref ~tracking-name ~ent-kw ent#)
-     (let [ent# ~new-ent]
-       (-> ~tracking-name
-           (track-ref ~ent-kw ent#)
-           (add-transaction ent#)
-           (add-flag ~ent-kw)))))
+  (if-let [ent existing-ent]
+    (track-ref tracking-name ent-kw ent)
+    (let [ent new-ent]
+      (-> tracking-name
+          (track-ref ent-kw ent)
+          (add-transaction ent)
+          (add-flag ent-kw)))))
 
 (defn find-ents
   [tracking parent-key parent-ref-key]
