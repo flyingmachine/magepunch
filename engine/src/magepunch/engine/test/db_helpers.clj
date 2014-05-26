@@ -16,5 +16,5 @@
 (defmacro setup-db-background
   [& before]
   `(background
-    (before :contents (with-test-db (t/reload) ~@before))
+    (before :contents (with-test-db (t/reload!) ~@before))
     (around :facts (with-test-db ?form))))

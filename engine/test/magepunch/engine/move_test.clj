@@ -1,13 +1,16 @@
 (ns magepunch.engine.move-test
-  (:require [magepunch.engine.move :as m])
+  (:require [magepunch.engine.move :as m]
+            [com.flyingmachine.datomic-junk :as dj])
   (:use midje.sweet
         magepunch.engine.test.db-helpers))
 
 (setup-db-background)
 
+(def test-from "bigpunch")
+(def test-target "tinyknuckles")
 (def test-dm
-  {:sender {:screen_name "bigpunch"}
-   :text "@tinyknuckles p p c"})
+  {:sender {:screen_name test-from}
+   :text (str "@" test-target " p p c")})
 
 (defn users
   []
@@ -29,15 +32,14 @@
   => false
 
   (m/validate-submission {:sender "bigpunch"
-                             :target ""
-                             :moves ["x"]})
+                          :target ""
+                          :moves ["x"]})
   => {:from   ["this DM is from nobody"],
       :moves  ["please specify three moves"
                "please use 'p' 'z' 'c' or 'h' for moves"]
       :target ["please specify a target, like @opponent"]})
 
-(facts "about processing users"
-  (fact "processing two new users")
+(fact "processing two new users"
   (let [tracking (users)]
     (fact "the new user flags are set"
       (:flags tracking)
@@ -45,6 +47,12 @@
     (fact "there are two users in the refs"
       (count (m/tref tracking :user))
       => 2)
+    (fact "there's a from ref"
+      (m/tref tracking :from)
+      => truthy)
+    (fact "there's a target ref"
+      (m/tref tracking :target)
+      => truthy)
     (fact "there are two transactions"
       (count (:transactions tracking))
       => 2)))
@@ -93,4 +101,9 @@
         => true)
       (fact "sequence is correct"
         (:move/sequence move)
-        "p p c"))))
+        => "p p c"))))
+
+(fact "processing a valid move results in ents getting creating"
+  (m/process-valid-submission! (m/dm->submission test-dm))
+  (:user/screenname (dj/one [:user/screenname test-from]))
+  => test-from)

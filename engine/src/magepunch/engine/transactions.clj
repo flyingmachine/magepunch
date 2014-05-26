@@ -3,7 +3,7 @@
 
 (defn tid
   []
-  (d/tempid :user/part))
+  (d/tempid :db.part/user))
 
 (defn dbid
   [x]
@@ -15,10 +15,12 @@
   {:from   new-user
    :target new-user
    :match (fn [users num]
-            (dbid {:match/magepunchers users :match/num num}))
+            (dbid {:match/magepunchers users
+                   :match/num num}))
    :round (fn [match num]
-            (dbid {:round/match match :round/num num}))
+            (dbid {:round/match match
+                   :round/num num}))
    :move  (fn [round user sequence]
             (dbid {:move/round round
-                   :move/sequence sequence
+                   :move/sequence (clojure.string/join " " sequence)
                    :move/magepuncher user}))})

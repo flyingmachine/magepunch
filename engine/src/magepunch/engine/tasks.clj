@@ -3,5 +3,5 @@
 
 (def schemas [:base])
 
-(def create djt/create)
-(def reload (partial djt/reload schemas))
+(def create! djt/create)
+(def reload! (partial djt/reload schemas))

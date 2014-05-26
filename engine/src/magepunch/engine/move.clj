@@ -127,7 +127,7 @@
   [pred col]
   (first (filter pred col)))
 
-(defn track-id
+(defn track-ref
   "track refs, whether for entities-to-be or existing ones"
   [tracking type ent]
   (let [id (:db/id ent)]
@@ -154,7 +154,7 @@
   "add correct tracking for new or existing ents"
   [tracking ent-type existing-ent & new-ent-args]
   (if-let [ent existing-ent]
-    (track-ref tracking ent-type ent)
+    (track-ref tracking ent-type (:db/id ent))
     (let [ent (apply (ent-type t/new-ent) new-ent-args)]
       (track-new-ent tracking ent-type ent))))
 
@@ -228,15 +228,32 @@
                (get-in tracking [:submission :moves]))
     (add-error tracking "you've already moved this round")))
 
+(defn notify!
+  [tracking]
+  )
+
+(defn process-invalid-submission!
+  [submission errors]
+  (println "invalid"))
+
+(defn commit!
+  [tracking]
+  @(dj/t (:transactions tracking)))
+
 (defn process-valid-submission!
   [submission]
-  (-> (submission-process-tracking submission)
-      from
-      target
-      users
-      match
-      round
-      move)
+  (let [tracking (-> (submission-process-tracking submission)
+                     from
+                     target
+                     users
+                     match
+                     round
+                     move)]
+    (let [errors (:errors tracking)]
+      (if (empty? errors)
+        (do (commit! tracking)
+            (notify! tracking))
+        (process-invalid-submission! (:submission tracking) errors))))
   
   ;; look up users
   ;; create user if nonexistent
@@ -251,9 +268,6 @@
   ;; if first move of round, notify opponent
   ;; otherwise complete round
   )
-
-(defn process-invalid-submission!
-  [submission])
 
 (defn submit-moves!
   "Reads a DM, parses it, validates it, records result, tweets result"
