@@ -156,8 +156,7 @@
   [tracking parent-key parent-ref-key]
   (if (flag tracking parent-ref-key)
     []
-    (let [refs (tref tracking parent-ref-key)
-          refs (if (coll? refs) refs (vector refs))]
+    (let [refs (tref tracking parent-ref-key)]
       (apply dj/all (map #(vector parent-key %) refs)))))
 
 (defn users
