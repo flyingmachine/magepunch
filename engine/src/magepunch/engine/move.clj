@@ -143,14 +143,14 @@
 ;; only downside is unnecessarily calling new-ent fns, but those are
 ;; cheap anywawy
 (defn track-ent
-  [tracking-name ent-kw existing-ent new-ent]
+  [tracking-name ent-type existing-ent & new-ent-args]
   (if-let [ent existing-ent]
-    (track-ref tracking-name ent-kw ent)
-    (let [ent new-ent]
+    (track-ref tracking-name ent-type ent)
+    (let [ent (apply (ent-type t/new-ent) new-ent-args)]
       (-> tracking-name
-          (track-ref ent-kw ent)
+          (track-ref ent-type ent)
           (add-transaction ent)
-          (add-flag ent-kw)))))
+          (add-flag ent-type)))))
 
 (defn find-ents
   [tracking parent-key parent-ref-key]
@@ -166,7 +166,7 @@
             (track-ent tracking
                        :user
                        (dj/one [:user/screenname screenname])
-                       (t/new-user screenname)))
+                       screenname))
           _tracking
           [(:from submission) (:target submission)]))
 
@@ -184,8 +184,8 @@
     (track-ent tracking
                :match
                (current-match matches)
-               (let [users (tref tracking :user)]
-                 (t/new-match users (series-num matches :match/num))))))
+               (tref tracking :user)
+               (series-num matches :match/num))))
 
 (defn find-rounds
   [tracking]
@@ -194,12 +194,12 @@
 
 (defn round
   [tracking]
-  (let [rounds (find-rounds tracking)
-        match (get-in tracking [:refs :match])]
+  (let [rounds (find-rounds tracking)]
     (track-ent tracking
                :round
                (current-round rounds)
-               (t/new-round match (series-num rounds :round/num)))))
+               (tref tracking :match)
+               (series-num rounds :round/num))))
 
 
 
