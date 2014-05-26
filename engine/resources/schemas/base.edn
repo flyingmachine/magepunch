@@ -63,4 +63,24 @@
   :db/valueType :db.type/ref
   :db/cardinality :db.cardinality/one
   :db/doc "User who is doing the move"
+  :db.install/_attribute :db.part/db}
+
+ ;;health
+ {:db/ident :health/magepuncher
+  :db/id #db/id[:db.part/db]
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/one
+  :db/doc "Magepuncher"
+  :db.install/_attribute :db.part/db}
+ {:db/ident :health/match
+  :db/id #db/id[:db.part/db]
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/one
+  :db/doc "Match"
+  :db.install/_attribute :db.part/db}
+ {:db/ident :health/hp
+  :db/id #db/id[:db.part/db]
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/doc "Health points"
   :db.install/_attribute :db.part/db}]

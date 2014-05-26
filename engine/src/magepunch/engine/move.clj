@@ -29,7 +29,9 @@
 
 (defn round-damage
   [p1 p2]
-  (apply map + (map #(get pair-damages [%1 %2]) p1 p2)))
+  (apply map + (map #(get pair-damages [%1 %2])
+                    (s/split p1 #"\s")
+                    (s/split p2 #"\s"))))
 
 (defn tweet-move-result!
   "send a tweek to the two players announcing move result"
@@ -38,7 +40,6 @@
 ;;;;;;
 ;; Submission parsing
 ;;;;;;
-
 (defn dm-from
   "who sent the dm"
   [dm]
@@ -207,8 +208,10 @@
 (def current-round (partial ffilter #(< (count (:move/_round %)) 2)))
 
 (defn round
+  "Track current round and all rounds"
   [tracking]
-  (let [rounds (find-rounds tracking)]
+  (let [rounds (find-rounds tracking)
+        tracking (track-ref tracking :rounds rounds)]
     (track-ent tracking
                :round
                (current-round rounds)
@@ -227,6 +230,27 @@
                (tref tracking :from)
                (get-in tracking [:submission :moves]))
     (add-error tracking "you've already moved this round")))
+
+(defn health
+  [tracking & players]
+  (let [match (tref tracking :match)]
+    (if (> (count (tref tracking :rounds)) 0)
+      (map #(dj/one [:health/magepuncher %] [:health/match match])
+           players)
+      (map #((:health t/new-ent) % match 100)
+           players))))
+
+(defn damage
+  [tracking]
+  (if-let [other-move (and (not (flag tracking :round))
+                           (dj/one [:move/round (tref tracking :round)]))]
+    (let [move (tref tracking :move)
+          health (health (tref tracking :from) (tref tracking :target))
+          damages (round-damage (:move/sequence move) (:move/sequence other-move))]
+      (reduce add-transaction
+              tracking
+              (map #(update-in %1 [:health/hp] - %2) health damages)))
+    tracking))
 
 (defn notify!
   [tracking]
@@ -248,6 +272,7 @@
                      users
                      match
                      round
+                     damage
                      move)]
     (let [errors (:errors tracking)]
       (if (empty? errors)

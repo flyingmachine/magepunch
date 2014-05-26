@@ -23,4 +23,8 @@
    :move  (fn [round user sequence]
             (dbid {:move/round round
                    :move/sequence (clojure.string/join " " sequence)
-                   :move/magepuncher user}))})
+                   :move/magepuncher user}))
+   :health (fn [user match hp]
+             (dbid {:health/magepuncher user
+                    :health/match match
+                    :health/hp hp}))})

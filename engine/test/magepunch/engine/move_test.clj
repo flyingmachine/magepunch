@@ -27,6 +27,10 @@
       :target "tinyknuckles"})
 
 
+(fact "calculating round damage"
+  (m/round-damage "p p c" "h p z")
+  => [10 60])
+
 (fact "You can validate submissions"
   (m/validate-submission (m/dm->submission test-dm))
   => false
@@ -103,7 +107,38 @@
         (:move/sequence move)
         => "p p c"))))
 
-(fact "processing a valid move results in ents getting creating"
+(fact "when processing a completely new valid move"
   (m/process-valid-submission! (m/dm->submission test-dm))
-  (:user/screenname (dj/one [:user/screenname test-from]))
-  => test-from)
+  (let [from   (dj/one [:user/screenname test-from])
+        target (dj/one [:user/screenname test-target])
+        match  (dj/one [:match/num])
+        round  (dj/one [:round/num])
+        move   (dj/one [:move/sequence])]
+
+    (fact "users are created"
+      (:user/screenname from)
+      => test-from
+      (:user/screenname target)
+      => test-target)
+
+    (fact "a match is created"
+      (:match/num match)
+      => 1
+      (count (:match/magepunchers match))
+      => 2
+      (:match/winner match)
+      => nil)
+
+    (fact "a round is created"
+      (:round/num round)
+      => 1
+      (:round/match round)
+      => match)
+
+    (fact "a move is created"
+      (:move/sequence move)
+      => "p p c"
+      (:move/round move)
+      => round
+      (:move/magepuncher move)
+      => from)))
