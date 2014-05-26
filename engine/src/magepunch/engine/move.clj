@@ -145,16 +145,16 @@
 (defmacro track-ent
   [tracking-name ent-kw existing-ent new-ent]
   `(if-let [ent# ~existing-ent]
-     (track-id ~tracking-name ~ent-kw ent#)
+     (track-ref ~tracking-name ~ent-kw ent#)
      (let [ent# ~new-ent]
        (-> ~tracking-name
-           (track-id ~ent-kw ent#)
+           (track-ref ~ent-kw ent#)
            (add-transaction ent#)
-           (add-flag ~(keyword (str "new-" (name ent-kw))))))))
+           (add-flag ~ent-kw)))))
 
 (defn find-ents
-  [tracking new-precluder parent-key parent-ref-key]
-  (if (flag tracking new-precluder)
+  [tracking parent-key parent-ref-key]
+  (if (flag tracking parent-ref-key)
     []
     (let [refs (tref tracking parent-ref-key)
           refs (if (coll? refs) refs (vector refs))]
@@ -175,7 +175,7 @@
 ;; rounds, and operate on those descriptions?
 (defn find-matches
   [tracking]
-  (find-ents tracking :new-user :match/magepunchers :user))
+  (find-ents tracking :match/magepunchers :user))
 (def current-match (partial ffilter #(nil? (:match/winner %))))
 
 (defn match
@@ -190,7 +190,7 @@
 
 (defn find-rounds
   [tracking]
-  (find-ents tracking :new-match :round/match :match))
+  (find-ents tracking :round/match :match))
 (def current-round (partial ffilter #(< (count (:move/_round %)) 2)))
 
 (defn round

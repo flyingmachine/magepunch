@@ -37,7 +37,7 @@
   (let [tracking (users)]
     (fact "the new user flag is set"
       (:flags tracking)
-      => {:new-user true})
+      => {:user true})
     (fact "there are two users in the refs"
       (count (get-in tracking [:refs :user]))
       => 2)
@@ -48,7 +48,7 @@
 (fact "when processing match"
   (let [tracking (m/match (users))]
     (fact "the new match flag is set"
-      (get-in tracking [:flags :new-match])
+      (get-in tracking [:flags :match])
       => true)
     (fact "a transaction was added"
       (count (:transactions tracking))
@@ -61,7 +61,7 @@
 (fact "when processing round"
   (let [tracking (m/round (m/match (users)))]
     (fact "the new round flag is set"
-      (get-in tracking [:flags :new-round])
+      (get-in tracking [:flags :round])
       => true)
     (fact "a transaction was added"
       (count (:transactions tracking))
