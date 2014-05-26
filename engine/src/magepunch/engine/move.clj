@@ -111,6 +111,10 @@
   [tracking key]
   (assoc-in tracking [:flags key] true))
 
+(defn add-error
+  [tracking error]
+  (update-in tracking conj error))
+
 (defn flag
   [tracking key]
   (get-in tracking [:flags key]))
@@ -213,12 +217,16 @@
 
 (defn move
   [tracking]
-  (track-ent tracking
-             :move
-             nil
-             (tref tracking :round)
-             (tref tracking :from)
-             (get-in tracking [:submission :moves])))
+  (if (or (flag tracking :round)
+          (nil? (dj/one [:move/round (tref tracking :round)]
+                        [:move/magepuncher (tref tracking :from)])))
+    (track-ent tracking
+               :move
+               nil
+               (tref tracking :round)
+               (tref tracking :from)
+               (get-in tracking [:submission :moves]))
+    (add-error tracking "you've already moved this round")))
 
 (defn process-valid-submission!
   [submission]
@@ -251,6 +259,6 @@
   "Reads a DM, parses it, validates it, records result, tweets result"
   [dm]
   (let [submission (dm->submission dm)]
-    (if-not (validate-submission submission)
-      (process-valid-submission! submission)
-      (process-invalid-submission! submission))))
+    (if-let [errors (validate-submission submission)]
+      (process-invalid-submission! submission errors)
+      (process-valid-submission! submission))))
