@@ -147,6 +147,7 @@
       (add-flag ent-type)))
 
 (defn track-ent
+  "add correct tracking for new or existing ents"
   [tracking ent-type existing-ent & new-ent-args]
   (if-let [ent existing-ent]
     (track-ref tracking ent-type ent)
@@ -160,16 +161,24 @@
     (let [refs (tref tracking parent-ref-key)]
       (apply dj/all (map #(vector parent-key %) refs)))))
 
+(defn user-processor
+  [user-key]
+  (fn [tracking]
+    (let [screenname (get-in tracking [:submission user-key])]
+      (track-ent tracking
+                 user-key
+                 (dj/one [:user/screenname screenname])
+                 screenname))))
+
+(def from (user-processor :from))
+(def target (user-processor :target))
+
 (defn users
-  "look up users, create if nonexistent, and add to tracking"
-  [{:keys [submission] :as _tracking}]
-  (reduce (fn [tracking screenname]
-            (track-ent tracking
-                       :user
-                       (dj/one [:user/screenname screenname])
-                       screenname))
-          _tracking
-          [(:from submission) (:target submission)]))
+  "consolidate user info for match"
+  [tracking]
+  (-> tracking
+      (assoc-in [:refs :user] #{(tref tracking :from) (tref tracking :target)})
+      (assoc-in [:flags :user] (or (flag tracking :from) (flag tracking :target)))))
 
 ;; TODO possibly refactor to create maps describing matches and
 ;; rounds, and operate on those descriptions?
@@ -209,6 +218,8 @@
 (defn process-valid-submission!
   [submission]
   (-> (submission-process-tracking submission)
+      from
+      target
       users
       match
       round)

@@ -9,7 +9,10 @@
   [x]
   (merge {:db/id (tid)} x))
 
+(def new-user #(dbid {:user/screenname %}))
+
 (def new-ent
-  {:user #(dbid {:user/screenname %})
+  {:from   new-user
+   :target new-user
    :match (fn [users num] (dbid {:match/magepunchers users :match/num num}))
    :round (fn [match num] (dbid {:round/match match :round/num num}))})

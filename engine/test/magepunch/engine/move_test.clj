@@ -11,7 +11,11 @@
 
 (defn users
   []
-  (m/users (m/submission-process-tracking (m/dm->submission test-dm))))
+  (-> (m/dm->submission test-dm)
+      m/submission-process-tracking
+      m/from
+      m/target
+      m/users))
 
 (fact "DMs are parsed nicely"
   (m/dm->submission test-dm)
@@ -35,9 +39,9 @@
 (facts "about processing users"
   (fact "processing two new users")
   (let [tracking (users)]
-    (fact "the new user flag is set"
+    (fact "the new user flags are set"
       (:flags tracking)
-      => {:user true})
+      => {:from true :target true :user true})
     (fact "there are two users in the refs"
       (count (get-in tracking [:refs :user]))
       => 2)
