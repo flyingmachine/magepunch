@@ -139,18 +139,19 @@
     1
     (inc (apply max (map num-field series)))))
 
-;; TODO consider making this a function
-;; only downside is unnecessarily calling new-ent fns, but those are
-;; cheap anywawy
+(defn track-new-ent
+  [tracking ent-type new-ent]
+  (-> tracking
+      (track-ref ent-type new-ent)
+      (add-transaction new-ent)
+      (add-flag ent-type)))
+
 (defn track-ent
-  [tracking-name ent-type existing-ent & new-ent-args]
+  [tracking ent-type existing-ent & new-ent-args]
   (if-let [ent existing-ent]
-    (track-ref tracking-name ent-type ent)
+    (track-ref tracking ent-type ent)
     (let [ent (apply (ent-type t/new-ent) new-ent-args)]
-      (-> tracking-name
-          (track-ref ent-type ent)
-          (add-transaction ent)
-          (add-flag ent-type)))))
+      (track-new-ent tracking ent-type ent))))
 
 (defn find-ents
   [tracking parent-key parent-ref-key]
@@ -201,13 +202,9 @@
                (tref tracking :match)
                (series-num rounds :round/num))))
 
-
-
 (defn move
   [tracking]
-  (if (and (empty? (:flags tracking)))
-    nil
-    nil))
+  (let [from (tref tracking :from)]))
 
 (defn process-valid-submission!
   [submission]
