@@ -1,6 +1,7 @@
 (ns magepunch.engine.move-test
   (:require [magepunch.engine.move :as m]
-            [com.flyingmachine.datomic-junk :as dj])
+            [com.flyingmachine.datomic-junk :as dj]
+            [magepunch.engine.tasks :as t])
   (:use midje.sweet
         magepunch.engine.test.db-helpers))
 
@@ -11,6 +12,9 @@
 (def test-dm
   {:sender {:screen_name test-from}
    :text (str "@" test-target " p p c")})
+(def test-dm2
+  {:sender {:screen_name test-target}
+   :text (str "@" test-from "p z z")})
 
 (defn users
   []
@@ -142,3 +146,8 @@
       => round
       (:move/magepuncher move)
       => from)))
+
+(fact "processing two moves"
+  (t/reload!)
+  (m/process-valid-submission! (m/dm->submission test-dm))
+  (m/process-valid-submission! (m/dm->submission test-dm2)))

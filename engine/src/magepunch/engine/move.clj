@@ -154,8 +154,8 @@
 (defn track-ent
   "add correct tracking for new or existing ents"
   [tracking ent-type existing-ent & new-ent-args]
-  (if-let [ent existing-ent]
-    (track-ref tracking ent-type (:db/id ent))
+  (if existing-ent
+    (track-ref tracking ent-type existing-ent)
     (let [ent (apply (ent-type t/new-ent) new-ent-args)]
       (track-new-ent tracking ent-type ent))))
 
@@ -185,8 +185,6 @@
       (assoc-in [:refs :user] #{(tref tracking :from) (tref tracking :target)})
       (assoc-in [:flags :user] (or (flag tracking :from) (flag tracking :target)))))
 
-;; TODO possibly refactor to create maps describing matches and
-;; rounds, and operate on those descriptions?
 (defn find-matches
   [tracking]
   (find-ents tracking :match/magepunchers :user))
@@ -262,6 +260,7 @@
 
 (defn commit!
   [tracking]
+  (println tracking)
   @(dj/t (:transactions tracking)))
 
 (defn process-valid-submission!
