@@ -32,8 +32,8 @@
 
 
 (fact "calculating round damage"
-  (m/round-damage "p p c" "h p z")
-  => [10 60])
+  (m/round-damage "p p c" "p z z")
+  => [40 80])
 
 (fact "You can validate submissions"
   (m/validate-submission (m/dm->submission test-dm))
@@ -115,9 +115,9 @@
   (m/process-valid-submission! (m/dm->submission test-dm))
   (let [from   (dj/one [:user/screenname test-from])
         target (dj/one [:user/screenname test-target])
-        match  (dj/one [:match/num])
-        round  (dj/one [:round/num])
-        move   (dj/one [:move/sequence])]
+        match  (dj/one :match/num)
+        round  (dj/one :round/num)
+        move   (dj/one :move/sequence)]
 
     (fact "users are created"
       (:user/screenname from)
@@ -150,4 +150,23 @@
 (fact "processing two moves"
   (t/reload!)
   (m/process-valid-submission! (m/dm->submission test-dm))
-  (m/process-valid-submission! (m/dm->submission test-dm2)))
+  (m/process-valid-submission! (m/dm->submission test-dm2))
+
+  (let [from    (dj/one [:user/screenname test-from])
+        target  (dj/one [:user/screenname test-target])
+        match   (dj/one :match/num)
+        round   (dj/one :round/num)
+        moves   (dj/all :move/sequence)
+        from-health   (dj/one [:health/magepuncher (:db/id from)])
+        target-health (dj/one [:health/magepuncher (:db/id target)])]
+
+    (fact "there are two moves"
+      (count moves)
+      => 2)
+
+    (fact "health is accounted for"
+      (:health/hp from-health)
+      => 60
+
+      (:health/hp target-health)
+      => 20)))
