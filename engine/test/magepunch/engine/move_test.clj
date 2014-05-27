@@ -14,7 +14,7 @@
    :text (str "@" test-target " p p c")})
 (def test-dm2
   {:sender {:screen_name test-target}
-   :text (str "@" test-from "p z z")})
+   :text (str "@" test-from " p z z")})
 
 (defn users
   []
@@ -51,9 +51,9 @@
   (let [tracking (users)]
     (fact "the new user flags are set"
       (:flags tracking)
-      => {:from true :target true :user true})
+      => {:from true :target true :users true})
     (fact "there are two users in the refs"
-      (count (m/tref tracking :user))
+      (count (m/tref tracking :users))
       => 2)
     (fact "there's a from ref"
       (m/tref tracking :from)
@@ -147,3 +147,7 @@
       (:move/magepuncher move)
       => from)))
 
+(fact "processing two moves"
+  (t/reload!)
+  (m/process-valid-submission! (m/dm->submission test-dm))
+  (m/process-valid-submission! (m/dm->submission test-dm2)))

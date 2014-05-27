@@ -161,7 +161,9 @@
   (if (flag tracking parent-ref-key)
     []
     (let [refs (tref tracking parent-ref-key)]
-      (apply dj/all (map #(vector parent-key %) refs)))))
+      (if (seq? refs)
+        (apply dj/all (map #(vector parent-key %) refs))
+        (dj/all [parent-key refs])))))
 
 (defn user-processor
   [user-key]
@@ -178,13 +180,16 @@
 (defn users
   "consolidate user info for match"
   [tracking]
-  (-> tracking
-      (assoc-in [:refs :user] #{(tref tracking :from) (tref tracking :target)})
-      (assoc-in [:flags :user] (or (flag tracking :from) (flag tracking :target)))))
+  (let [t (assoc-in tracking
+                    [:refs :users]
+                    (map (partial tref tracking) [:from :target]))]
+    (if (or (flag tracking :from) (flag tracking :target))
+      (assoc-in t [:flags :users] true)
+      t)))
 
 (defn find-matches
   [tracking]
-  (find-ents tracking :match/magepunchers :user))
+  (find-ents tracking :match/magepunchers :users))
 (def current-match (partial ffilter #(nil? (:match/winner %))))
 
 (defn match
@@ -194,7 +199,7 @@
     (track-ent tracking
                :match
                (current-match matches)
-               (tref tracking :user)
+               (tref tracking :users)
                (series-num matches :match/num))))
 
 (defn find-rounds
@@ -236,11 +241,12 @@
            players))))
 
 (defn damage
+  "Transactions for updating health, if applicable"
   [tracking]
   (if-let [other-move (and (not (flag tracking :round))
                            (dj/one [:move/round (tref tracking :round)]))]
-    (let [move (tref tracking :move)
-          health (health (tref tracking :from) (tref tracking :target))
+    (let [move (last (:transactions tracking))
+          health (health tracking (tref tracking :from) (tref tracking :target))
           damages (round-damage (:move/sequence move) (:move/sequence other-move))]
       (reduce add-transaction
               tracking
@@ -267,8 +273,8 @@
                      users
                      match
                      round
-                     damage
-                     move)]
+                     move
+                     damage)]
     (let [errors (:errors tracking)]
       (if (empty? errors)
         (do (commit! tracking)
