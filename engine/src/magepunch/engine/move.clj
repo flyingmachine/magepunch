@@ -114,7 +114,7 @@
 
 (defn add-error
   [tracking error]
-  (update-in tracking conj error))
+  (update-in tracking [:errors] conj error))
 
 (defn flag
   [tracking key]
@@ -241,7 +241,7 @@
            players))))
 
 (defn damage
-  "Transactions for updating health, if applicable"
+  "Add transactions for updating health, if applicable"
   [tracking]
   (if-let [other-move (and (not (flag tracking :round))
                            (dj/one [:move/round (tref tracking :round)]))]
@@ -265,6 +265,12 @@
   [tracking]
   @(dj/t (:transactions tracking)))
 
+(defn resolve-move!
+  [tracking]
+  (let [tracking (damage tracking)]
+    (commit! tracking)
+    (notify! tracking)))
+
 (defn process-valid-submission!
   [submission]
   (let [tracking (-> (submission-process-tracking submission)
@@ -273,12 +279,10 @@
                      users
                      match
                      round
-                     move
-                     damage)]
+                     move)]
     (let [errors (:errors tracking)]
       (if (empty? errors)
-        (do (commit! tracking)
-            (notify! tracking))
+        (resolve-move! tracking)
         (process-invalid-submission! (:submission tracking) errors))))
   
   ;; look up users

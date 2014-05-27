@@ -170,3 +170,14 @@
 
       (:health/hp target-health)
       => 20)))
+
+;; You have to wait until the next round to submit your next move
+(fact "processing invalid second move"
+  (t/reload!)
+  (m/process-valid-submission! (m/dm->submission test-dm))
+  (m/process-valid-submission! (m/dm->submission test-dm))
+
+  (let [moves (dj/all :move/sequence)]
+    (fact "there is one move"
+      (count moves)
+      => 1)))
