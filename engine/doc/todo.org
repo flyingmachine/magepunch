@@ -1,0 +1,9 @@
+* determine whether match is over
+check whether health is below 0 for either
+handle case where it's a draw?
+* add transaction if match is over
+* notify
+** if match over
+announce winner
+** if match not over
+moves, damages, new health

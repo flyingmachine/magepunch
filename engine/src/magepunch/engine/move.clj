@@ -240,22 +240,36 @@
       (map #((:health t/new-ent) % match 100)
            players))))
 
+(defn second-move?
+  "Checks whether current tracking contains second move. If it does,
+  return the first move of the round"
+  [tracking]
+  (and (not (flag tracking :round))
+       (dj/one [:move/round (tref tracking :round)])))
+
 (defn damage
   "Add transactions for updating health, if applicable"
+  [tracking other-move]
+  (let [move (last (:transactions tracking))
+        health (health tracking (tref tracking :from) (tref tracking :target))
+        damages (round-damage (:move/sequence move) (:move/sequence other-move))]
+    (reduce add-transaction
+            tracking
+            (map #(update-in %1 [:health/hp] - %2) health damages))))
+
+(defn winner
   [tracking]
-  (if-let [other-move (and (not (flag tracking :round))
-                           (dj/one [:move/round (tref tracking :round)]))]
-    (let [move (last (:transactions tracking))
-          health (health tracking (tref tracking :from) (tref tracking :target))
-          damages (round-damage (:move/sequence move) (:move/sequence other-move))]
-      (reduce add-transaction
-              tracking
-              (map #(update-in %1 [:health/hp] - %2) health damages)))
-    tracking))
+  tracking)
 
 (defn notify!
   [tracking]
   )
+
+(defn process-second-move
+  [tracking second-move]
+  (-> tracking
+      (damage second-move)
+      winner))
 
 (defn process-invalid-submission!
   [submission errors]
@@ -267,7 +281,9 @@
 
 (defn resolve-move!
   [tracking]
-  (let [tracking (damage tracking)]
+  (let [tracking (if-let [other-move (second-move? tracking)]
+                   (process-second-move tracking other-move)
+                   tracking)]
     (commit! tracking)
     (notify! tracking)))
 
