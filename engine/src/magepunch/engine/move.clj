@@ -98,6 +98,7 @@
   [submission]
   {:flags {}
    :refs {:user #{}}
+   :ents {}
    :transactions []
    :errors #{}
    :submission submission})
@@ -116,13 +117,13 @@
   [tracking error]
   (update-in tracking [:errors] conj error))
 
-(defn flag
-  [tracking key]
-  (get-in tracking [:flags key]))
+(defn tracking-lookup
+  [l1]
+  (fn [tracking l2] (get-in tracking [l1 l2])))
 
-(defn tref
-  [tracking key]
-  (get-in tracking [:refs key]))
+(def flag (tracking-lookup :flags))
+(def tref (tracking-lookup :refs))
+(def tent (tracking-lookup :ents))
 
 (defn ffilter
   [pred col]
@@ -132,6 +133,10 @@
   "track refs, whether for entities-to-be or existing ones"
   [tracking type ent]
   (assoc-in tracking [:refs type] (:db/id ent)))
+
+(defn track-ent*
+  [tracking id ent]
+  (assoc-in tracking [:ents id] ent))
 
 (defn series-num
   "keep track of which x this is, e.g. match 1, match 2, match 3, or
@@ -156,15 +161,6 @@
     (let [ent (apply (ent-type t/new-ent) new-ent-args)]
       (track-new-ent tracking ent-type ent))))
 
-(defn find-ents
-  [tracking parent-key parent-ref-key]
-  (if (flag tracking parent-ref-key)
-    []
-    (let [refs (tref tracking parent-ref-key)]
-      (if (seq? refs)
-        (apply dj/all (map #(vector parent-key %) refs))
-        (dj/all [parent-key refs])))))
-
 (defn user-processor
   [user-key]
   (fn [tracking]
@@ -187,10 +183,20 @@
       (assoc-in t [:flags :users] true)
       t)))
 
+(defn find-ents
+  [tracking parent-key parent-ref-key]
+  (if (flag tracking parent-ref-key)
+    []
+    (let [refs (tref tracking parent-ref-key)]
+      (if (seq? refs)
+        (apply dj/all (map #(vector parent-key %) refs))
+        (dj/all [parent-key refs])))))
+
 (defn find-matches
   [tracking]
   (find-ents tracking :match/magepunchers :users))
-(def current-match (partial ffilter #(nil? (:match/winner %))))
+(def current-match (partial ffilter #(and (nil? (:match/winner %))
+                                          (nil? (:match/draw %)))))
 
 (defn match
   "find current match, create if nonexistent, add to tracking"
@@ -211,7 +217,7 @@
   "Track current round and all rounds"
   [tracking]
   (let [rounds (find-rounds tracking)
-        tracking (track-ref tracking :rounds rounds)]
+        tracking (track-ent* tracking :rounds rounds)]
     (track-ent tracking
                :round
                (current-round rounds)
@@ -234,7 +240,7 @@
 (defn health
   [tracking & players]
   (let [match (tref tracking :match)]
-    (if (> (count (tref tracking :rounds)) 0)
+    (if (> (count (tent tracking :rounds)) 1)
       (map #(dj/one [:health/magepuncher %] [:health/match match])
            players)
       (map #((:health t/new-ent) % match 100)
@@ -255,11 +261,41 @@
         damages (round-damage (:move/sequence move) (:move/sequence other-move))]
     (reduce add-transaction
             tracking
-            (map #(update-in %1 [:health/hp] - %2) health damages))))
+            (map (fn [h d]
+                   (if (dj/ent? h)
+                     {:db/id (:db/id h)
+                      :health/hp (- (:health/hp h) d)
+                      :health/magepuncher (:db/id (:health/magepuncher h))}
+                     (update-in h [:health/hp] - d)))
+                 health damages))))
+
+(defn add-draw-transaction
+  [tracking]
+  (add-transaction tracking {:db/id (tref tracking :match)
+                             :match/draw true}))
+
+(defn add-winner-transaction
+  [tracking winner]
+  (add-transaction tracking {:db/id (tref tracking :match)
+                             :match/winner winner}))
+
+(defn draw?
+  [hps]
+  (every? #(< % 0) hps))
+
+(defn alive?
+  [healths]
+  (filter #(> (:health/hp %) 0) healths))
 
 (defn winner
   [tracking]
-  tracking)
+  (let [healths (take-last 2 (:transactions tracking))
+        alive (alive? healths)
+        alive-count (count alive)]
+    (condp = alive-count
+      2 tracking
+      1 (add-winner-transaction tracking (:health/magepuncher (first alive)))
+      0 (add-draw-transaction tracking))))
 
 (defn notify!
   [tracking]

@@ -29,6 +29,13 @@
   :db/cardinality :db.cardinality/one
   :db/doc "Magepuncher who won"
   :db.install/_attribute :db.part/db}
+ 
+ {:db/ident :match/draw
+  :db/id #db/id[:db.part/db]
+  :db/valueType :db.type/boolean
+  :db/cardinality :db.cardinality/one
+  :db/doc "There are no winners"
+  :db.install/_attribute :db.part/db}
 
  ;; rounds
  {:db/ident :round/num

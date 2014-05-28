@@ -155,7 +155,6 @@
   (let [from    (dj/one [:user/screenname test-from])
         target  (dj/one [:user/screenname test-target])
         match   (dj/one :match/num)
-        round   (dj/one :round/num)
         moves   (dj/all :move/sequence)
         from-health   (dj/one [:health/magepuncher (:db/id from)])
         target-health (dj/one [:health/magepuncher (:db/id target)])]
@@ -181,3 +180,32 @@
     (fact "there is one move"
       (count moves)
       => 1)))
+
+(fact "processing entire match"
+  (t/reload!)
+  (m/process-valid-submission! (m/dm->submission test-dm))
+  (m/process-valid-submission! (m/dm->submission test-dm2))
+  (m/process-valid-submission! (m/dm->submission test-dm))
+  (m/process-valid-submission! (m/dm->submission test-dm2))
+
+  (let [from    (dj/one [:user/screenname test-from])
+        target  (dj/one [:user/screenname test-target])
+        match   (dj/one :match/num)
+        moves   (dj/all :move/sequence)
+        from-health   (dj/one [:health/magepuncher (:db/id from)])
+        target-health (dj/one [:health/magepuncher (:db/id target)])]
+
+    (fact "there are four moves"
+      (count moves)
+      => 4)
+
+    (fact "health is accounted for"
+      (:health/hp from-health)
+      => 20
+
+      (:health/hp target-health)
+      => -60)
+
+    (fact "there is a winner"
+      (:match/winner match)
+      => from)))
