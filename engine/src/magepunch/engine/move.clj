@@ -2,6 +2,7 @@
   (:require [clojure.string :as s]
             [flyingmachine.webutils.validation :as v]
             [com.flyingmachine.datomic-junk :as dj]
+            [magepunch.engine.parse :as p]
             [magepunch.engine.transactions :as t]))
 
 (defn symmetrize
@@ -36,55 +37,6 @@
 (defn tweet-move-result!
   "send a tweek to the two players announcing move result"
   [move-result])
-
-;;;;;;
-;; Submission parsing
-;;;;;;
-(defn dm-from
-  "who sent the dm"
-  [dm]
-  (get-in dm [:sender :screen_name]))
-
-(defn dm-target
-  "the other player"
-  [dm]
-  (second (re-find #"@([^ ]+)" (:text dm))))
-
-(defn dm-moves
-  "the three moves in the DM, e.g. p c h"
-  [dm]
-  (map str
-       (-> (re-find #"@[^\s]+(.*$)" (:text dm))
-           second
-           (s/replace #"\s+" "")
-           seq)))
-
-(defn dm->submission
-  [dm]
-  {:from   (dm-from dm)
-   :target (dm-target dm)
-   :moves  (dm-moves dm)})
-
-(def valid-moves #{"p" "z" "c" "h"})
-(def submission-validators
-  {:from   ["this DM is from nobody"
-            #(not-empty %)]
-   
-   :target ["please specify a target, like @opponent"
-            #(not-empty %)]
-   
-   :moves  ["please specify three moves"
-            #(= 3 (count %))
-
-            "please use 'p' 'z' 'c' or 'h' for moves"
-            #(every? valid-moves %)]})
-
-(defn validate-submission
-  [submission]
-  (v/if-valid
-   submission submission-validators errors
-   false
-   errors))
 
 ;;;;;;
 ;; Submission processing
@@ -124,17 +76,18 @@
 (def flag (tracking-lookup :flags))
 (def tref (tracking-lookup :refs))
 (def tent (tracking-lookup :ents))
+(def tsub (tracking-lookup :submission))
 
 (defn ffilter
   [pred col]
   (first (filter pred col)))
 
-(defn track-ref
+(defn add-ref
   "track refs, whether for entities-to-be or existing ones"
   [tracking type ent]
   (assoc-in tracking [:refs type] (:db/id ent)))
 
-(defn track-ent*
+(defn assoc-ent
   [tracking id ent]
   (assoc-in tracking [:ents id] ent))
 
@@ -146,26 +99,27 @@
     1
     (inc (apply max (map num-field series)))))
 
-(defn track-new-ent
+(defn add-new-ent
   [tracking ent-type new-ent]
   (-> tracking
-      (track-ref ent-type new-ent)
+      (add-ref ent-type new-ent)
       (add-transaction new-ent)
       (add-flag ent-type)))
 
-(defn track-ent
+(defn add-ent
   "add correct tracking for new or existing ents"
   [tracking ent-type existing-ent & new-ent-args]
   (if existing-ent
-    (track-ref tracking ent-type existing-ent)
+    (add-ref tracking ent-type existing-ent)
     (let [ent (apply (ent-type t/new-ent) new-ent-args)]
-      (track-new-ent tracking ent-type ent))))
+      (add-new-ent tracking ent-type ent))))
 
 (defn user-processor
+  "function factory for from/target processing"
   [user-key]
   (fn [tracking]
-    (let [screenname (get-in tracking [:submission user-key])]
-      (track-ent tracking
+    (let [screenname (tsub tracking user-key)]
+      (add-ent tracking
                  user-key
                  (dj/one [:user/screenname screenname])
                  screenname))))
@@ -202,7 +156,7 @@
   "find current match, create if nonexistent, add to tracking"
   [tracking]
   (let [matches (find-matches tracking)]
-    (track-ent tracking
+    (add-ent tracking
                :match
                (current-match matches)
                (tref tracking :users)
@@ -217,8 +171,8 @@
   "Track current round and all rounds"
   [tracking]
   (let [rounds (find-rounds tracking)
-        tracking (track-ent* tracking :rounds rounds)]
-    (track-ent tracking
+        tracking (assoc-ent tracking :rounds rounds)]
+    (add-ent tracking
                :round
                (current-round rounds)
                (tref tracking :match)
@@ -229,12 +183,12 @@
   (if (or (flag tracking :round)
           (nil? (dj/one [:move/round (tref tracking :round)]
                         [:move/magepuncher (tref tracking :from)])))
-    (track-ent tracking
+    (add-ent tracking
                :move
                nil
                (tref tracking :round)
                (tref tracking :from)
-               (get-in tracking [:submission :moves]))
+               (tsub tracking :moves))
     (add-error tracking "you've already moved this round")))
 
 (defn health
@@ -335,26 +289,12 @@
     (let [errors (:errors tracking)]
       (if (empty? errors)
         (resolve-move! tracking)
-        (process-invalid-submission! (:submission tracking) errors))))
-  
-  ;; look up users
-  ;; create user if nonexistent
-  
-  ;; look up match
-  ;; if not active match, create new match
-  
-  ;; look up round
-  ;; if no active round, create new round
-  
-  ;; add move
-  ;; if first move of round, notify opponent
-  ;; otherwise complete round
-  )
+        (process-invalid-submission! (:submission tracking) errors)))))
 
 (defn submit-moves!
   "Reads a DM, parses it, validates it, records result, tweets result"
   [dm]
-  (let [submission (dm->submission dm)]
-    (if-let [errors (validate-submission submission)]
+  (let [submission (p/dm->submission dm)]
+    (if-let [errors (p/validate-submission submission)]
       (process-invalid-submission! submission errors)
       (process-valid-submission! submission))))

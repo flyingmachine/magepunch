@@ -202,7 +202,6 @@
     (fact "health is accounted for"
       (:health/hp from-health)
       => 20
-
       (:health/hp target-health)
       => -60)
 
