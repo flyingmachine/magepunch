@@ -272,23 +272,30 @@
       0 (add-draw-transaction tracking))))
 
 (defn move-notification
-  [])
+  [tracking]
+  (str "@" (:user/screenname (tent tracking :from))
+       " " (s/join " " (tsub tracking :moves)) "\n"
+       
+       "@" (:user/screenname (tent tracking :target))
+       " " (:move/sequence (tent tracking :first-move)) "\n"))
 
 (defn winner-notification
   [tracking]
-)
+  (str "@" (:user/screenname (tent tracking :winner)) " wins!"))
 
 (defn draw-notification
-  [tracking])
+  [tracking]
+  "It was a draw!")
 
 (defn round-over-notification
   [tracking])
 
 (defn notification
   [tracking]
-  (cond (tent tracking :winner) (winner-notification tracking)
-        (flag tracking :draw) (draw-notification tracking)
-        :else (round-over-notification tracking)))
+  (str (move-notification tracking)
+       (cond (tent tracking :winner) (winner-notification tracking)
+             (flag tracking :draw) (draw-notification tracking)
+             :else (round-over-notification tracking))))
 
 (defn notify!
   [tracking]
