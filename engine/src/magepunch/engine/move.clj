@@ -206,12 +206,20 @@
     (add-error tracking "you've already moved this round")))
 
 (defn health
+  "Health values looked up when it's the second move of a round"
   [tracking & players]
   (let [match (tref tracking :match)]
+    ;; Only retrieve health values if it's after the first round;
+    ;; otherwise create new health ents
     (if (> (count (tall tracking :round)) 1)
-      (map #(dj/one [:health/magepuncher %] [:health/match match])
+      (map (fn [p]
+             (let [ent (dj/one [:health/magepuncher p] [:health/match match])
+                   hp (:health/hp ent)]
+               {:db/id (:db/id ent)
+                :health/hp hp
+                :health/magepuncher p}))
            players)
-      (map #((:health t/new-ent) % match 100)
+      (map #(t/new-health % match 100)
            players))))
 
 (defn second-move?
@@ -230,11 +238,7 @@
     (reduce add-transaction
             tracking
             (map (fn [h d]
-                   (if (dj/ent? h)
-                     {:db/id (:db/id h)
-                      :health/hp (- (:health/hp h) d)
-                      :health/magepuncher (:db/id (:health/magepuncher h))}
-                     (update-in h [:health/hp] - d)))
+                   (update-in h [:health/hp] - d))
                  health damages))))
 
 (defn add-draw-transaction

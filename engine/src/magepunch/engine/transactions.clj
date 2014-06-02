@@ -11,6 +11,12 @@
 
 (def new-user #(dbid {:user/screenname %}))
 
+(defn new-health
+  [user match hp]
+  (dbid {:health/magepuncher user
+         :health/match match
+         :health/hp hp}))
+
 (def new-ent
   {:from   new-user
    :target new-user
@@ -24,7 +30,4 @@
             (dbid {:move/round round
                    :move/sequence (clojure.string/join " " sequence)
                    :move/magepuncher user}))
-   :health (fn [user match hp]
-             (dbid {:health/magepuncher user
-                    :health/match match
-                    :health/hp hp}))})
+   :health new-health})
