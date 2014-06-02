@@ -230,16 +230,21 @@
        (dj/one [:move/round (tref tracking :round)])))
 
 (defn damage
-  "Add transactions for updating health, if applicable"
+  "Add transactions for updating health"
   [tracking other-move]
   (let [move (last (:transactions tracking))
         health (health tracking (tref tracking :from) (tref tracking :target))
-        damages (round-damage (:move/sequence move) (:move/sequence other-move))]
+        damages (round-damage (:move/sequence move) (:move/sequence other-move))
+        updated-healths (map (fn [h d] (update-in h [:health/hp] - d))
+                             health damages)
+
+        tracking-with-health
+        (-> (assoc-ent tracking :from-health (:health/hp (first updated-healths)))
+            (assoc-ent :target-health (:health/hp (second updated-healths))))]
+    
     (reduce add-transaction
-            tracking
-            (map (fn [h d]
-                   (update-in h [:health/hp] - d))
-                 health damages))))
+            tracking-with-health
+            updated-healths)))
 
 (defn add-draw-transaction
   [tracking]
@@ -274,10 +279,12 @@
 (defn move-notification
   [tracking]
   (str "@" (:user/screenname (tent tracking :from))
-       " " (s/join " " (tsub tracking :moves)) "\n"
+       " " (s/join " " (tsub tracking :moves))
+       " " (tent tracking :from-health) "\n"
        
        "@" (:user/screenname (tent tracking :target))
-       " " (:move/sequence (tent tracking :first-move)) "\n"))
+       " " (:move/sequence (tent tracking :first-move))
+       " " (tent tracking :target-health) "\n"))
 
 (defn winner-notification
   [tracking]
