@@ -222,7 +222,7 @@
       (map #(t/new-health % match 100)
            players))))
 
-(defn second-move?
+(defn first-move-exists?
   "Checks whether current tracking contains second move. If it does,
   return the first move of the round"
   [tracking]
@@ -243,13 +243,15 @@
 
 (defn add-draw-transaction
   [tracking]
-  (add-transaction tracking {:db/id (tref tracking :match)
-                             :match/draw true}))
+  (-> (add-flag tracking :draw)
+      (add-transaction {:db/id (tref tracking :match)
+                        :match/draw true})))
 
 (defn add-winner-transaction
   [tracking winner]
-  (add-transaction tracking {:db/id (tref tracking :match)
-                             :match/winner winner}))
+  (-> (assoc-ent tracking :winner winner)
+      (add-transaction {:db/id (tref tracking :match)
+                        :match/winner winner})))
 
 (defn draw?
   [hps]
@@ -269,14 +271,34 @@
       1 (add-winner-transaction tracking (:health/magepuncher (first alive)))
       0 (add-draw-transaction tracking))))
 
+(defn move-notification
+  [])
+
+(defn winner-notification
+  [tracking]
+)
+
+(defn draw-notification
+  [tracking])
+
+(defn round-over-notification
+  [tracking])
+
+(defn notification
+  [tracking]
+  (cond (tent tracking :winner) (winner-notification tracking)
+        (flag tracking :draw) (draw-notification tracking)
+        :else (round-over-notification tracking)))
+
 (defn notify!
   [tracking]
   )
 
 (defn process-second-move
-  [tracking second-move]
+  [tracking first-move]
   (-> tracking
-      (damage second-move)
+      (assoc-ent :first-move first-move)
+      (damage first-move)
       winner))
 
 (defn process-invalid-submission!
@@ -289,8 +311,8 @@
 
 (defn resolve-move!
   [tracking]
-  (let [tracking (if-let [other-move (second-move? tracking)]
-                   (process-second-move tracking other-move)
+  (let [tracking (if-let [first-move (first-move-exists? tracking)]
+                   (process-second-move tracking first-move)
                    tracking)]
     (commit! tracking)
     (notify! tracking)))
