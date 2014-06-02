@@ -51,6 +51,7 @@
   {:flags {}
    :refs {:user #{}}
    :ents {}
+   :all {}
    :transactions []
    :errors #{}
    :submission submission})
@@ -58,7 +59,7 @@
 (defn add-transaction
   "A submission can include an indeterminate number of transaction"
   [tracking transaction]
-  (update-in tracking [:transactions] #(conj % transaction)))
+  (update-in tracking [:transactions] conj transaction))
 
 (defn add-flag
   "flags help keep track of what entities don't exist yet"
@@ -69,6 +70,10 @@
   [tracking error]
   (update-in tracking [:errors] conj error))
 
+(defn add-all
+  [tracking key val]
+  (assoc-in tracking [:all key] val))
+
 (defn tracking-lookup
   [l1]
   (fn [tracking l2] (get-in tracking [l1 l2])))
@@ -76,6 +81,7 @@
 (def flag (tracking-lookup :flags))
 (def tref (tracking-lookup :refs))
 (def tent (tracking-lookup :ents))
+(def tall (tracking-lookup :all))
 (def tsub (tracking-lookup :submission))
 
 (defn ffilter
@@ -155,11 +161,11 @@
 (defn add-ent*
   [tracking {:keys [all-finder current-finder ent-key parent-ref-key num-key]}]
   (let [all (all-finder tracking)]
-    (add-ent tracking
-             ent-key
-             (current-finder all)
-             (tref tracking parent-ref-key)
-             (series-num all num-key))))
+    (-> (add-all tracking ent-key all)
+        (add-ent ent-key
+                 (current-finder all)
+                 (tref tracking parent-ref-key)
+                 (series-num all num-key)))))
 
 (defn match
   "find current match, create if nonexistent, add to tracking"
@@ -171,7 +177,8 @@
              :parent-ref-key :users
              :num-key :match/num}))
 
-(defn find-rounds [tracking]
+(defn find-rounds
+  [tracking]
   (find-ents tracking :round/match :match))
 (def current-round (partial ffilter #(< (count (:move/_round %)) 2)))
 
@@ -201,7 +208,7 @@
 (defn health
   [tracking & players]
   (let [match (tref tracking :match)]
-    (if (> (count (tent tracking :rounds)) 1)
+    (if (> (count (tall tracking :round)) 1)
       (map #(dj/one [:health/magepuncher %] [:health/match match])
            players)
       (map #((:health t/new-ent) % match 100)

@@ -1,5 +1,6 @@
 (ns magepunch.engine.move-test
   (:require [magepunch.engine.move :as m]
+            [magepunch.engine.parse :as p]
             [com.flyingmachine.datomic-junk :as dj]
             [magepunch.engine.tasks :as t])
   (:use midje.sweet
@@ -16,16 +17,19 @@
   {:sender {:screen_name test-target}
    :text (str "@" test-from " p z z")})
 
+(def sub1 (p/dm->submission test-dm))
+(def sub2 (p/dm->submission test-dm2))
+
 (defn users
   []
-  (-> (m/dm->submission test-dm)
+  (-> sub1
       m/submission-process-tracking
       m/from
       m/target
-      m/users))
+      m/consolidate-users))
 
 (fact "DMs are parsed nicely"
-  (m/dm->submission test-dm)
+  sub1
   => {:from "bigpunch"
       :moves ["p" "p" "c"]
       :target "tinyknuckles"})
@@ -36,10 +40,10 @@
   => [40 80])
 
 (fact "You can validate submissions"
-  (m/validate-submission (m/dm->submission test-dm))
+  (p/validate-submission sub1)
   => false
 
-  (m/validate-submission {:sender "bigpunch"
+  (p/validate-submission {:sender "bigpunch"
                           :target ""
                           :moves ["x"]})
   => {:from   ["this DM is from nobody"],
@@ -112,7 +116,7 @@
         => "p p c"))))
 
 (fact "when processing a completely new valid move"
-  (m/process-valid-submission! (m/dm->submission test-dm))
+  (m/process-valid-submission! sub1)
   (let [from   (dj/one [:user/screenname test-from])
         target (dj/one [:user/screenname test-target])
         match  (dj/one :match/num)
@@ -149,8 +153,8 @@
 
 (fact "processing two moves"
   (t/reload!)
-  (m/process-valid-submission! (m/dm->submission test-dm))
-  (m/process-valid-submission! (m/dm->submission test-dm2))
+  (m/process-valid-submission! sub1)
+  (m/process-valid-submission! sub2)
 
   (let [from    (dj/one [:user/screenname test-from])
         target  (dj/one [:user/screenname test-target])
@@ -173,8 +177,8 @@
 ;; You have to wait until the next round to submit your next move
 (fact "processing invalid second move"
   (t/reload!)
-  (m/process-valid-submission! (m/dm->submission test-dm))
-  (m/process-valid-submission! (m/dm->submission test-dm))
+  (m/process-valid-submission! sub1)
+  (m/process-valid-submission! sub1)
 
   (let [moves (dj/all :move/sequence)]
     (fact "there is one move"
@@ -183,10 +187,10 @@
 
 (fact "processing entire match"
   (t/reload!)
-  (m/process-valid-submission! (m/dm->submission test-dm))
-  (m/process-valid-submission! (m/dm->submission test-dm2))
-  (m/process-valid-submission! (m/dm->submission test-dm))
-  (m/process-valid-submission! (m/dm->submission test-dm2))
+  (m/process-valid-submission! sub1)
+  (m/process-valid-submission! sub2)
+  (m/process-valid-submission! sub1)
+  (m/process-valid-submission! sub2)
 
   (let [from    (dj/one [:user/screenname test-from])
         target  (dj/one [:user/screenname test-target])
