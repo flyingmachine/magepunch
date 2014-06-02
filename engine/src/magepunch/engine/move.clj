@@ -120,14 +120,14 @@
   (fn [tracking]
     (let [screenname (tsub tracking user-key)]
       (add-ent tracking
-                 user-key
-                 (dj/one [:user/screenname screenname])
-                 screenname))))
+               user-key
+               (dj/one [:user/screenname screenname])
+               screenname))))
 
 (def from (user-processor :from))
 (def target (user-processor :target))
 
-(defn users
+(defn consolidate-users
   "consolidate user info for match"
   [tracking]
   (let [t (assoc-in tracking
@@ -152,31 +152,38 @@
 (def current-match (partial ffilter #(and (nil? (:match/winner %))
                                           (nil? (:match/draw %)))))
 
+(defn add-ent*
+  [tracking {:keys [all-finder current-finder ent-key parent-ref-key num-key]}]
+  (let [all (all-finder tracking)]
+    (add-ent tracking
+             ent-key
+             (current-finder all)
+             (tref tracking parent-ref-key)
+             (series-num all num-key))))
+
 (defn match
   "find current match, create if nonexistent, add to tracking"
   [tracking]
-  (let [matches (find-matches tracking)]
-    (add-ent tracking
-               :match
-               (current-match matches)
-               (tref tracking :users)
-               (series-num matches :match/num))))
+  (add-ent* tracking
+            {:all-finder find-matches
+             :current-finder current-match
+             :ent-key :match
+             :parent-ref-key :users
+             :num-key :match/num}))
 
-(defn find-rounds
-  [tracking]
+(defn find-rounds [tracking]
   (find-ents tracking :round/match :match))
 (def current-round (partial ffilter #(< (count (:move/_round %)) 2)))
 
 (defn round
   "Track current round and all rounds"
   [tracking]
-  (let [rounds (find-rounds tracking)
-        tracking (assoc-ent tracking :rounds rounds)]
-    (add-ent tracking
-               :round
-               (current-round rounds)
-               (tref tracking :match)
-               (series-num rounds :round/num))))
+  (add-ent* tracking
+            {:all-finder find-rounds
+             :current-finder current-round
+             :ent-key :round
+             :parent-ref-key :match
+             :num-key :round/num}))
 
 (defn move
   [tracking]
@@ -184,11 +191,11 @@
           (nil? (dj/one [:move/round (tref tracking :round)]
                         [:move/magepuncher (tref tracking :from)])))
     (add-ent tracking
-               :move
-               nil
-               (tref tracking :round)
-               (tref tracking :from)
-               (tsub tracking :moves))
+             :move
+             nil
+             (tref tracking :round)
+             (tref tracking :from)
+             (tsub tracking :moves))
     (add-error tracking "you've already moved this round")))
 
 (defn health
@@ -282,7 +289,7 @@
   (let [tracking (-> (submission-process-tracking submission)
                      from
                      target
-                     users
+                     consolidate-users
                      match
                      round
                      move)]
