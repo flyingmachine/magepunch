@@ -212,3 +212,9 @@
     (fact "there is a winner"
       (:match/winner match)
       => from)))
+
+(fact "notifications"
+  (t/reload!)
+  (m/process-valid-submission! sub1)
+  (m/notification (m/track-submission-data sub2))
+  => "@tinyknuckles p z z 20\n@bigpunch p p c 60\n")

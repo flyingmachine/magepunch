@@ -278,11 +278,11 @@
 
 (defn move-notification
   [tracking]
-  (str "@" (:user/screenname (tent tracking :from))
+  (str "@" (tsub tracking :from)
        " " (s/join " " (tsub tracking :moves))
        " " (tent tracking :from-health) "\n"
        
-       "@" (:user/screenname (tent tracking :target))
+       "@" (tsub tracking :target)
        " " (:move/sequence (tent tracking :first-move))
        " " (tent tracking :target-health) "\n"))
 
@@ -295,7 +295,12 @@
   "It was a draw!")
 
 (defn round-over-notification
-  [tracking])
+  [tracking]
+  )
+
+(defn your-turn-notification
+  [tracking]
+  )
 
 (defn notification
   [tracking]
