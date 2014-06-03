@@ -323,27 +323,33 @@
   [tracking]
   @(dj/t (:transactions tracking)))
 
-(defn resolve-move!
+(defn resolve-move
   [tracking]
-  (let [tracking (if-let [first-move (first-move-exists? tracking)]
-                   (process-second-move tracking first-move)
-                   tracking)]
-    (commit! tracking)
-    (notify! tracking)))
+  (if-let [first-move (first-move-exists? tracking)]
+    (process-second-move tracking first-move)
+    tracking))
+
+(defn track-submission-data
+  [submission]
+  (let [t (-> (submission-process-tracking submission)
+              from
+              target
+              consolidate-users
+              match
+              round
+              move)]
+    (if (empty? (:errors t))
+      (resolve-move t)
+      t)))
 
 (defn process-valid-submission!
   [submission]
-  (let [tracking (-> (submission-process-tracking submission)
-                     from
-                     target
-                     consolidate-users
-                     match
-                     round
-                     move)]
-    (let [errors (:errors tracking)]
-      (if (empty? errors)
-        (resolve-move! tracking)
-        (process-invalid-submission! (:submission tracking) errors)))))
+  (let [tracking (track-submission-data submission)
+        errors (:errors tracking)]
+    (if (empty? errors)
+      (do (commit! tracking)
+          (notify! tracking))
+      (process-invalid-submission! (:submission tracking) errors))))
 
 (defn submit-moves!
   "Reads a DM, parses it, validates it, records result, tweets result"
