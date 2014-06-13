@@ -175,7 +175,8 @@
              (tsub tracking :moves))
     (add-error tracking "you've already moved this round")))
 
-(defn fresh-health
+(defn retrieve-health
+  "Fresh health for a new match"
   [match players]
   (map (fn [p]
          (let [ent (dj/one [:health/magepuncher p] [:health/match match])
@@ -185,16 +186,17 @@
             :health/magepuncher p}))
        players))
 
+(defn after-first-round?
+  [tracking]
+  (> (count (tall tracking :round)) 1))
+
 (defn health
   "Health values looked up when it's the second move of a round"
   [tracking & players]
   (let [match (tid tracking :match)]
-    ;; Only retrieve health values if it's after the first round;
-    ;; otherwise create new health ents
-    (if (> (count (tall tracking :round)) 1)
-      (fresh-health match players)
-      (map #(t/new-health % match 100)
-           players))))
+    (if (after-first-round? tracking)
+      (retrieve-health match players)
+      (map #(t/new-health % match 100) players))))
 
 (defn damage
   "Add transactions for updating health"
