@@ -3,7 +3,9 @@
             [magepunch.engine.damage :as d]
             [magepunch.engine.parse :as p]
             [com.flyingmachine.datomic-junk :as dj]
-            [magepunch.engine.tasks :as t])
+            [magepunch.engine.tasks :as t]
+            [magepunch.engine.notification :as n]
+            [magepunch.engine.tracking :as tr])
   (:use midje.sweet
         magepunch.engine.test.db-helpers))
 
@@ -24,7 +26,7 @@
 (defn users
   []
   (-> sub1
-      m/submission-process-tracking
+      tr/submission-process-tracking
       m/from
       m/target
       m/consolidate-users))
@@ -58,13 +60,13 @@
       (:flags tracking)
       => {:from true :target true :users true})
     (fact "there are two users in the refs"
-      (count (m/tid tracking :users))
+      (count (tr/tid tracking :users))
       => 2)
     (fact "there's a from ref"
-      (m/tid tracking :from)
+      (tr/tid tracking :from)
       => truthy)
     (fact "there's a target ref"
-      (m/tid tracking :target)
+      (tr/tid tracking :target)
       => truthy)
     (fact "there are two transactions"
       (count (:transactions tracking))
@@ -106,11 +108,11 @@
     (let [move (last (:transactions tracking))]
       (fact "the user is the same as from"
         (:move/magepuncher move)
-        => (m/tid tracking :from)
+        => (tr/tid tracking :from)
         => true)
       (fact "move round refers to round"
         (:move/round move)
-        => (m/tid tracking :round)
+        => (tr/tid tracking :round)
         => true)
       (fact "sequence is correct"
         (:move/sequence move)
@@ -217,5 +219,5 @@
 (fact "notifications"
   (t/reload!)
   (m/process-valid-submission! sub1)
-  (m/notification (m/track-submission-data sub2))
-  => "@tinyknuckles p z z 20\n@bigpunch p p c 60\n")
+  (n/notification (m/track-submission-data sub2))
+  => "@tinyknuckles p z z -80 20\n@bigpunch p p c -40 60\nround over!")

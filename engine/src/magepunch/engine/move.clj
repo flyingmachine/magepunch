@@ -4,7 +4,9 @@
             [com.flyingmachine.datomic-junk :as dj]
             [magepunch.engine.parse :as p]
             [magepunch.engine.damage :as d]
-            [magepunch.engine.transactions :as t]))
+            [magepunch.engine.notification :as n]
+            [magepunch.engine.transactions :as t]
+            [magepunch.engine.tracking :refer :all]))
 
 (defn tweet-move-result!
   "send a tweek to the two players announcing move result"
@@ -18,50 +20,6 @@
 ;; submission map which contains datomic transactions
 
 ;; Initial tracking map which grows as submission is processed
-(defn submission-process-tracking
-  [submission]
-  {:flags {}
-   :ids {:user #{}}
-   :ents {}
-   :all {}
-   :transactions []
-   :errors #{}
-   :submission submission})
-
-(defn updater
-  [key]
-  (fn [tracking x] (update-in tracking [key] conj x)))
-
-(def add-transaction (updater :transactions))
-(def add-error (updater :errors))
-
-(defn add-flag
-  "flags help keep track of what entities don't exist yet"
-  [tracking key]
-  (assoc-in tracking [:flags key] true))
-
-(defn add-all
-  [tracking key val]
-  (assoc-in tracking [:all key] val))
-
-(defn add-id
-  "track ids, whether for entities-to-be or existing ones"
-  [tracking type ent]
-  (assoc-in tracking [:ids type] (:db/id ent)))
-
-(defn assoc-ent
-  [tracking key ent]
-  (assoc-in tracking [:ents key] ent))
-
-(defn tracking-lookup
-  [l1]
-  (fn [tracking l2] (get-in tracking [l1 l2])))
-
-(def flag (tracking-lookup :flags))
-(def tid (tracking-lookup :ids))
-(def tent (tracking-lookup :ents))
-(def tall (tracking-lookup :all))
-(def tsub (tracking-lookup :submission))
 
 (defn ffilter
   [pred col]
@@ -205,9 +163,11 @@
       (map #(t/new-health % match 100) players))))
 
 (defn assoc-healths
-  [tracking healths]
+  [tracking healths damages]
   (-> (assoc-ent tracking :from-health (first healths))
-      (assoc-ent :target-health (second healths))))
+      (assoc-ent :target-health (second healths))
+      (assoc-ent :from-damage (first damages))
+      (assoc-ent :target-damage (second damages))))
 
 (defn damage
   "Add transactions for updating health"
@@ -217,7 +177,7 @@
         damages (d/round-damage (:move/sequence move) (:move/sequence other-move))
         updated-healths (map (fn [h d] (update-in h [:health/hp] - d))
                              health damages)
-        tracking-with-health (assoc-healths tracking updated-healths)]
+        tracking-with-health (assoc-healths tracking updated-healths damages)]
     (reduce add-transaction
             tracking-with-health
             updated-healths)))
@@ -251,39 +211,6 @@
       2 tracking
       1 (add-winner-transaction tracking (:health/magepuncher (first alive)))
       0 (add-draw-transaction tracking))))
-
-(defn move-notification
-  [tracking]
-  (str "@" (tsub tracking :from)
-       " " (s/join " " (tsub tracking :moves))
-       " " (:health/hp (tent tracking :from-health)) "\n"
-       
-       "@" (tsub tracking :target)
-       " " (:move/sequence (tent tracking :first-move))
-       " " (:health/hp (tent tracking :target-health)) "\n"))
-
-(defn winner-notification
-  [tracking]
-  (str "@" (:user/screenname (tent tracking :winner)) " wins!"))
-
-(defn draw-notification
-  [tracking]
-  "It was a draw!")
-
-(defn round-over-notification
-  [tracking]
-  )
-
-(defn your-turn-notification
-  [tracking]
-  )
-
-(defn notification
-  [tracking]
-  (str (move-notification tracking)
-       (cond (tent tracking :winner) (winner-notification tracking)
-             (flag tracking :draw) (draw-notification tracking)
-             :else (round-over-notification tracking))))
 
 (defn notify!
   [tracking]
