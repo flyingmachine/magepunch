@@ -218,6 +218,9 @@
 
 (fact "notifications"
   (t/reload!)
+  (n/notification (m/track-submission-data sub1))
+  => "@tinyknuckles, @bigpunch has magepunched you!"
+  
   (m/process-valid-submission! sub1)
   (n/notification (m/track-submission-data sub2))
   => "@tinyknuckles p z z -80 20\n@bigpunch p p c -40 60\nround over!")

@@ -1,4 +1,5 @@
-(ns magepunch.engine.tracking)
+(ns magepunch.engine.tracking
+  (:require [com.flyingmachine.datomic-junk :as dj]))
 
 (defn submission-process-tracking
   [submission]
@@ -44,3 +45,10 @@
 (def tent (tracking-lookup :ents))
 (def tall (tracking-lookup :all))
 (def tsub (tracking-lookup :submission))
+
+(defn first-move-exists?
+  "Checks whether current tracking contains second move. If it does,
+  return the first move of the round"
+  [tracking]
+  (and (not (flag tracking :round))
+       (dj/one [:move/round (tid tracking :round)])))

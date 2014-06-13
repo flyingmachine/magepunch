@@ -116,13 +116,6 @@
               :parent-ref-key :match
               :num-key :round/num}))
 
-(defn first-move-exists?
-  "Checks whether current tracking contains second move. If it does,
-  return the first move of the round"
-  [tracking]
-  (and (not (flag tracking :round))
-       (dj/one [:move/round (tid tracking :round)])))
-
 (defn player-has-moved?
   [tracking]
   (if-let [move (first-move-exists? tracking)]
