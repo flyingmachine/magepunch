@@ -123,11 +123,11 @@
         (dj/all [parent-key ids])))))
 
 (defn add-child
-  [tracking {:keys [all-finder current-finder ent-key parent-ref-key num-key]}]
+  [tracking {:keys [all-finder current-child-filter ent-key parent-ref-key num-key]}]
   (let [all (all-finder tracking)]
     (-> (add-all tracking ent-key all)
         (add-ent ent-key
-                 (current-finder all)
+                 (current-child-filter all)
                  (tid tracking parent-ref-key)
                  (series-num all num-key)))))
 
@@ -136,8 +136,8 @@
   [tracking]
   (add-child tracking
              {:all-finder #(find-child-ents % :match/magepunchers :users)
-              :current-finder (partial ffilter #(and (nil? (:match/winner %))
-                                                     (nil? (:match/draw %))))
+              :current-child-filter (partial ffilter #(and (nil? (:match/winner %))
+                                                           (nil? (:match/draw %))))
               :ent-key :match 
               :parent-ref-key :users
               :num-key :match/num}))
@@ -145,12 +145,12 @@
 (defn round
   "Track current round and all rounds"
   [tracking]
-  (add-ent* tracking
-            {:all-finder #(find-child-ents % :round/match :match)
-             :current-finder (partial ffilter #(< (count (:move/_round %)) 2))
-             :ent-key :round
-             :parent-ref-key :match
-             :num-key :round/num}))
+  (add-child tracking
+             {:all-finder #(find-child-ents % :round/match :match)
+              :current-child-filter (partial ffilter #(< (count (:move/_round %)) 2))
+              :ent-key :round
+              :parent-ref-key :match
+              :num-key :round/num}))
 
 (defn move
   [tracking]
