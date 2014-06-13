@@ -204,19 +204,20 @@
       (retrieve-health match players)
       (map #(t/new-health % match 100) players))))
 
+(defn assoc-healths
+  [tracking healths]
+  (-> (assoc-ent tracking :from-health (first healths))
+      (assoc-ent :target-health (second healths))))
+
 (defn damage
   "Add transactions for updating health"
   [tracking other-move]
-  (let [move (last (:transactions tracking))
+  (let [move (tent tracking :move)
         health (health tracking (tid tracking :from) (tid tracking :target))
         damages (d/round-damage (:move/sequence move) (:move/sequence other-move))
         updated-healths (map (fn [h d] (update-in h [:health/hp] - d))
                              health damages)
-
-        tracking-with-health
-        (-> (assoc-ent tracking :from-health (:health/hp (first updated-healths)))
-            (assoc-ent :target-health (:health/hp (second updated-healths))))]
-    
+        tracking-with-health (assoc-healths tracking updated-healths)]
     (reduce add-transaction
             tracking-with-health
             updated-healths)))
@@ -243,7 +244,7 @@
 
 (defn winner
   [tracking]
-  (let [healths (take-last 2 (:transactions tracking))
+  (let [healths [(tent tracking :from-health) (tent tracking :target-health)]
         alive (alive? healths)
         alive-count (count alive)]
     (condp = alive-count
@@ -255,11 +256,11 @@
   [tracking]
   (str "@" (tsub tracking :from)
        " " (s/join " " (tsub tracking :moves))
-       " " (tent tracking :from-health) "\n"
+       " " (:health/hp (tent tracking :from-health)) "\n"
        
        "@" (tsub tracking :target)
        " " (:move/sequence (tent tracking :first-move))
-       " " (tent tracking :target-health) "\n"))
+       " " (:health/hp (tent tracking :target-health)) "\n"))
 
 (defn winner-notification
   [tracking]
