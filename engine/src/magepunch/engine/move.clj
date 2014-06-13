@@ -113,7 +113,7 @@
       (assoc-in t [:flags :users] true)
       t)))
 
-(defn find-ents
+(defn find-child-ents
   [tracking parent-key parent-ref-key]
   (if (flag tracking parent-ref-key)
     []
@@ -122,13 +122,7 @@
         (apply dj/all (map #(vector parent-key %) ids))
         (dj/all [parent-key ids])))))
 
-(defn find-matches
-  [tracking]
-  (find-ents tracking :match/magepunchers :users))
-(def current-match (partial ffilter #(and (nil? (:match/winner %))
-                                          (nil? (:match/draw %)))))
-
-(defn add-ent*
+(defn add-child
   [tracking {:keys [all-finder current-finder ent-key parent-ref-key num-key]}]
   (let [all (all-finder tracking)]
     (-> (add-all tracking ent-key all)
@@ -140,24 +134,20 @@
 (defn match
   "find current match, create if nonexistent, add to tracking"
   [tracking]
-  (add-ent* tracking
-            {:all-finder find-matches
-             :current-finder current-match
-             :ent-key :match
-             :parent-ref-key :users
-             :num-key :match/num}))
-
-(defn find-rounds
-  [tracking]
-  (find-ents tracking :round/match :match))
-(def current-round (partial ffilter #(< (count (:move/_round %)) 2)))
+  (add-child tracking
+             {:all-finder #(find-child-ents % :match/magepunchers :users)
+              :current-finder (partial ffilter #(and (nil? (:match/winner %))
+                                                     (nil? (:match/draw %))))
+              :ent-key :match 
+              :parent-ref-key :users
+              :num-key :match/num}))
 
 (defn round
   "Track current round and all rounds"
   [tracking]
   (add-ent* tracking
-            {:all-finder find-rounds
-             :current-finder current-round
+            {:all-finder #(find-child-ents % :round/match :match)
+             :current-finder (partial ffilter #(< (count (:move/_round %)) 2))
              :ent-key :round
              :parent-ref-key :match
              :num-key :round/num}))
