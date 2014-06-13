@@ -33,19 +33,25 @@
   (fn [tracking x] (update-in tracking [key] conj x)))
 
 (def add-transaction (updater :transactions))
+(def add-error (updater :errors))
 
 (defn add-flag
   "flags help keep track of what entities don't exist yet"
   [tracking key]
   (assoc-in tracking [:flags key] true))
 
-(defn add-error
-  [tracking error]
-  (update-in tracking [:errors] conj error))
-
 (defn add-all
   [tracking key val]
   (assoc-in tracking [:all key] val))
+
+(defn add-ref
+  "track refs, whether for entities-to-be or existing ones"
+  [tracking type ent]
+  (assoc-in tracking [:refs type] (:db/id ent)))
+
+(defn assoc-ent
+  [tracking id ent]
+  (assoc-in tracking [:ents id] ent))
 
 (defn tracking-lookup
   [l1]
@@ -60,15 +66,6 @@
 (defn ffilter
   [pred col]
   (first (filter pred col)))
-
-(defn add-ref
-  "track refs, whether for entities-to-be or existing ones"
-  [tracking type ent]
-  (assoc-in tracking [:refs type] (:db/id ent)))
-
-(defn assoc-ent
-  [tracking id ent]
-  (assoc-in tracking [:ents id] ent))
 
 (defn series-num
   "keep track of which x this is, e.g. match 1, match 2, match 3, or
