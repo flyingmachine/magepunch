@@ -50,8 +50,8 @@
   (assoc-in tracking [:ids type] (:db/id ent)))
 
 (defn assoc-ent
-  [tracking id ent]
-  (assoc-in tracking [:ents id] ent))
+  [tracking key ent]
+  (assoc-in tracking [:ents key] ent))
 
 (defn tracking-lookup
   [l1]
@@ -75,10 +75,16 @@
     1
     (inc (apply max (map num-field series)))))
 
+(defn track-ent
+  [tracking ent-type ent]
+  (-> tracking
+      (add-id ent-type ent)
+      (assoc-ent ent-type ent)))
+
 (defn add-new-ent
   [tracking ent-type new-ent]
   (-> tracking
-      (add-id ent-type new-ent)
+      (track-ent ent-type new-ent)
       (add-transaction new-ent)
       (add-flag ent-type)))
 
@@ -86,7 +92,7 @@
   "add correct tracking for new or existing ents"
   [tracking ent-type existing-ent & new-ent-args]
   (if existing-ent
-    (add-id tracking ent-type existing-ent)
+    (track-ent tracking ent-type existing-ent)
     (let [ent (apply (ent-type t/new-ent) new-ent-args)]
       (add-new-ent tracking ent-type ent))))
 
