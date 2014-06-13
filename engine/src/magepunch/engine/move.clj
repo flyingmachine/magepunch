@@ -3,6 +3,7 @@
             [flyingmachine.webutils.validation :as v]
             [com.flyingmachine.datomic-junk :as dj]
             [magepunch.engine.parse :as p]
+            [magepunch.engine.damage :as d]
             [magepunch.engine.transactions :as t]))
 
 (defn symmetrize
