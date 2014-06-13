@@ -152,11 +152,21 @@
               :parent-ref-key :match
               :num-key :round/num}))
 
+(defn first-move-exists?
+  "Checks whether current tracking contains second move. If it does,
+  return the first move of the round"
+  [tracking]
+  (and (not (flag tracking :round))
+       (dj/one [:move/round (tid tracking :round)])))
+
+(defn player-has-moved?
+  [tracking]
+  (if-let [move (first-move-exists? tracking)]
+    (= (:db/id (:move/magepuncher move)) (tid tracking :from))))
+
 (defn move
   [tracking]
-  (if (or (flag tracking :round)
-          (nil? (dj/one [:move/round (tid tracking :round)]
-                        [:move/magepuncher (tid tracking :from)])))
+  (if-not (player-has-moved? tracking)
     (add-ent tracking
              :move
              nil
@@ -181,13 +191,6 @@
            players)
       (map #(t/new-health % match 100)
            players))))
-
-(defn first-move-exists?
-  "Checks whether current tracking contains second move. If it does,
-  return the first move of the round"
-  [tracking]
-  (and (not (flag tracking :round))
-       (dj/one [:move/round (tid tracking :round)])))
 
 (defn damage
   "Add transactions for updating health"
