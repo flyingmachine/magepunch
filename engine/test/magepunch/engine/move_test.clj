@@ -1,5 +1,6 @@
 (ns magepunch.engine.move-test
   (:require [magepunch.engine.move :as m]
+            [magepunch.engine.damage :as d]
             [magepunch.engine.parse :as p]
             [com.flyingmachine.datomic-junk :as dj]
             [magepunch.engine.tasks :as t])
@@ -36,7 +37,7 @@
 
 
 (fact "calculating round damage"
-  (m/round-damage "p p c" "p z z")
+  (d/round-damage "p p c" "p z z")
   => [40 80])
 
 (fact "You can validate submissions"

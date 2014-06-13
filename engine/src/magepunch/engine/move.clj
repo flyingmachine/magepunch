@@ -6,35 +6,6 @@
             [magepunch.engine.damage :as d]
             [magepunch.engine.transactions :as t]))
 
-(defn symmetrize
-  "Used to avoid repeating the symmetrical value of pair-damages"
-  [x]
-  (reduce (fn [z [key value]] (assoc z (reverse key) (reverse value)))
-          x
-          x))
-
-;; - punch does 10 base damage
-;; - zap does 30 base damage
-;; - counter damages opponent for 2x against zap, receives 2x against
-;; punch
-;; - heal removes 20 damage
-(def pair-damages (symmetrize {["p" "p"] [10  10]
-                               ["p" "z"] [30  10]
-                               ["p" "c"] [0   20]
-                               ["p" "h"] [0   -10]
-                               ["z" "z"] [30  30]
-                               ["z" "c"] [60  0]
-                               ["z" "h"] [0   10]
-                               ["c" "c"] [10  10]
-                               ["c" "h"] [0   -20]
-                               ["h" "h"] [-20 -20]}))
-
-(defn round-damage
-  [p1 p2]
-  (apply map + (map #(get pair-damages [%1 %2])
-                    (s/split p1 #"\s")
-                    (s/split p2 #"\s"))))
-
 (defn tweet-move-result!
   "send a tweek to the two players announcing move result"
   [move-result])
@@ -57,10 +28,11 @@
    :errors #{}
    :submission submission})
 
-(defn add-transaction
-  "A submission can include an indeterminate number of transaction"
-  [tracking transaction]
-  (update-in tracking [:transactions] conj transaction))
+(defn updater
+  [key]
+  (fn [tracking x] (update-in tracking [key] conj x)))
+
+(def add-transaction (updater :transactions))
 
 (defn add-flag
   "flags help keep track of what entities don't exist yet"
@@ -235,7 +207,7 @@
   [tracking other-move]
   (let [move (last (:transactions tracking))
         health (health tracking (tref tracking :from) (tref tracking :target))
-        damages (round-damage (:move/sequence move) (:move/sequence other-move))
+        damages (d/round-damage (:move/sequence move) (:move/sequence other-move))
         updated-healths (map (fn [h d] (update-in h [:health/hp] - d))
                              health damages)
 
