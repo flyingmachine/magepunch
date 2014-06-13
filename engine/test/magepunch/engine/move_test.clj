@@ -58,13 +58,13 @@
       (:flags tracking)
       => {:from true :target true :users true})
     (fact "there are two users in the refs"
-      (count (m/tref tracking :users))
+      (count (m/tid tracking :users))
       => 2)
     (fact "there's a from ref"
-      (m/tref tracking :from)
+      (m/tid tracking :from)
       => truthy)
     (fact "there's a target ref"
-      (m/tref tracking :target)
+      (m/tid tracking :target)
       => truthy)
     (fact "there are two transactions"
       (count (:transactions tracking))
@@ -106,11 +106,11 @@
     (let [move (last (:transactions tracking))]
       (fact "the user is the same as from"
         (:move/magepuncher move)
-        => (m/tref tracking :from)
+        => (m/tid tracking :from)
         => true)
       (fact "move round refers to round"
         (:move/round move)
-        => (m/tref tracking :round)
+        => (m/tid tracking :round)
         => true)
       (fact "sequence is correct"
         (:move/sequence move)

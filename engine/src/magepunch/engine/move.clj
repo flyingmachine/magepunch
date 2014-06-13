@@ -21,7 +21,7 @@
 (defn submission-process-tracking
   [submission]
   {:flags {}
-   :refs {:user #{}}
+   :ids {:user #{}}
    :ents {}
    :all {}
    :transactions []
@@ -44,10 +44,10 @@
   [tracking key val]
   (assoc-in tracking [:all key] val))
 
-(defn add-ref
-  "track refs, whether for entities-to-be or existing ones"
+(defn add-id
+  "track ids, whether for entities-to-be or existing ones"
   [tracking type ent]
-  (assoc-in tracking [:refs type] (:db/id ent)))
+  (assoc-in tracking [:ids type] (:db/id ent)))
 
 (defn assoc-ent
   [tracking id ent]
@@ -58,7 +58,7 @@
   (fn [tracking l2] (get-in tracking [l1 l2])))
 
 (def flag (tracking-lookup :flags))
-(def tref (tracking-lookup :refs))
+(def tid (tracking-lookup :ids))
 (def tent (tracking-lookup :ents))
 (def tall (tracking-lookup :all))
 (def tsub (tracking-lookup :submission))
@@ -78,7 +78,7 @@
 (defn add-new-ent
   [tracking ent-type new-ent]
   (-> tracking
-      (add-ref ent-type new-ent)
+      (add-id ent-type new-ent)
       (add-transaction new-ent)
       (add-flag ent-type)))
 
@@ -86,7 +86,7 @@
   "add correct tracking for new or existing ents"
   [tracking ent-type existing-ent & new-ent-args]
   (if existing-ent
-    (add-ref tracking ent-type existing-ent)
+    (add-id tracking ent-type existing-ent)
     (let [ent (apply (ent-type t/new-ent) new-ent-args)]
       (add-new-ent tracking ent-type ent))))
 
@@ -107,8 +107,8 @@
   "consolidate user info for match"
   [tracking]
   (let [t (assoc-in tracking
-                    [:refs :users]
-                    (map (partial tref tracking) [:from :target]))]
+                    [:ids :users]
+                    (map (partial tid tracking) [:from :target]))]
     (if (or (flag tracking :from) (flag tracking :target))
       (assoc-in t [:flags :users] true)
       t)))
@@ -117,10 +117,10 @@
   [tracking parent-key parent-ref-key]
   (if (flag tracking parent-ref-key)
     []
-    (let [refs (tref tracking parent-ref-key)]
-      (if (seq? refs)
-        (apply dj/all (map #(vector parent-key %) refs))
-        (dj/all [parent-key refs])))))
+    (let [ids (tid tracking parent-ref-key)]
+      (if (seq? ids)
+        (apply dj/all (map #(vector parent-key %) ids))
+        (dj/all [parent-key ids])))))
 
 (defn find-matches
   [tracking]
@@ -134,7 +134,7 @@
     (-> (add-all tracking ent-key all)
         (add-ent ent-key
                  (current-finder all)
-                 (tref tracking parent-ref-key)
+                 (tid tracking parent-ref-key)
                  (series-num all num-key)))))
 
 (defn match
@@ -165,20 +165,20 @@
 (defn move
   [tracking]
   (if (or (flag tracking :round)
-          (nil? (dj/one [:move/round (tref tracking :round)]
-                        [:move/magepuncher (tref tracking :from)])))
+          (nil? (dj/one [:move/round (tid tracking :round)]
+                        [:move/magepuncher (tid tracking :from)])))
     (add-ent tracking
              :move
              nil
-             (tref tracking :round)
-             (tref tracking :from)
+             (tid tracking :round)
+             (tid tracking :from)
              (tsub tracking :moves))
     (add-error tracking "you've already moved this round")))
 
 (defn health
   "Health values looked up when it's the second move of a round"
   [tracking & players]
-  (let [match (tref tracking :match)]
+  (let [match (tid tracking :match)]
     ;; Only retrieve health values if it's after the first round;
     ;; otherwise create new health ents
     (if (> (count (tall tracking :round)) 1)
@@ -197,13 +197,13 @@
   return the first move of the round"
   [tracking]
   (and (not (flag tracking :round))
-       (dj/one [:move/round (tref tracking :round)])))
+       (dj/one [:move/round (tid tracking :round)])))
 
 (defn damage
   "Add transactions for updating health"
   [tracking other-move]
   (let [move (last (:transactions tracking))
-        health (health tracking (tref tracking :from) (tref tracking :target))
+        health (health tracking (tid tracking :from) (tid tracking :target))
         damages (d/round-damage (:move/sequence move) (:move/sequence other-move))
         updated-healths (map (fn [h d] (update-in h [:health/hp] - d))
                              health damages)
@@ -219,13 +219,13 @@
 (defn add-draw-transaction
   [tracking]
   (-> (add-flag tracking :draw)
-      (add-transaction {:db/id (tref tracking :match)
+      (add-transaction {:db/id (tid tracking :match)
                         :match/draw true})))
 
 (defn add-winner-transaction
   [tracking winner]
   (-> (assoc-ent tracking :winner winner)
-      (add-transaction {:db/id (tref tracking :match)
+      (add-transaction {:db/id (tid tracking :match)
                         :match/winner winner})))
 
 (defn draw?
